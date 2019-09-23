@@ -72,8 +72,6 @@ def find_group_members(c):
             bs[0] = bs[0] * (rvirs_i[h_id,snap]>=6.5)
             rs_tot = np.append(rs_tot, bs[1][bs[0]])
             vs_tot = np.append(vs_tot, bs[2][bs[0]])
-            #bool_tot = np.append(bool_tot, bs[0])
-            #subs_tot = np.append(subs_tot, subs_i[:,snap][bs[0]]==128*mod+1+h_id)
             n_memb = np.append(n_memb, int(np.sum(bs[0])))
             r_virs = np.append(r_virs, rvirs_i[h_id,snap])
             z_infa = np.append(z_infa, z_list[snap+offset])
@@ -82,14 +80,65 @@ def find_group_members(c):
     return rs_tot, vs_tot, n_memb, r_virs, z_infa
 
 
-
-clus_ids = ld_arr('G3X_data/ds_infor_G3X_progen/DS_G3X_snap_128_center-'
+clus_ids = ld_arr(G3X_data+'ds_infor_G3X_progen/DS_G3X_snap_128_center-'
         'cluster_progenitors.txt', dtype='int')[:, 1]-(128*mod+1)  
 
-crange = np.array(np.loadtxt('G3X_data/G3X_300_selected_sample_257.txt'), 
-        dtype='int')
+crange = np.array(np.loadtxt(G3X_data+'G3X_300_selected_sample_257.txt'), 
+        dtype='int')[:1]
 
-redshifts = ld_arr('G3X_data/G3X_300_redshifts.txt')
+redshifts = ld_arr(G3X_data+'G3X_300_redshifts.txt')
 
 p_lim = 100
 mstarlim = 10.**9.5
+
+rs_total = np.zeros(0)
+vs_total = np.zeros(0)
+nm_total = np.zeros(0)
+r2_total = np.zeros(0)
+zi_total = np.zeros(0)
+member_no = np.zeros(0)
+total_no = np.zeros(0)
+#crange = crange[:5]
+
+for c_val in crange:
+    print c_val
+    result = find_group_members(c_val)
+    rs_total = np.append(rs_total, result[0])
+    vs_total = np.append(vs_total, result[1])
+    nm_total = np.append(nm_total, result[2])
+    r2_total = np.append(r2_total, result[3])
+    zi_total = np.append(zi_total, result[4])
+    member_no = np.append(member_no, np.sum(result[2]))
+    total_no = np.append(total_no, len(result[2]))
+
+if not os.path.exists('data_out'):
+    os.mkdir('data_out')
+pd.DataFrame(np.char.mod('%12.9f', np.transpose(np.array(
+        [rs_total, vs_total])))).to_csv('data_out/rs_vs_257.txt', sep='\t', 
+        index=None, header=[' r/R200_host', '    v/v_crit'])
+pd.DataFrame(np.char.mod('%6d', nm_total)).to_csv('data_out/n_memb_257.txt', 
+        index=None, header=['n_memb'])
+pd.DataFrame(np.char.mod('%12.7f', r2_total)).to_csv('data_out/r_200s_257'
+        '.txt', index=None, header=['       r_200'])
+pd.DataFrame(np.char.mod('%6.3f', zi_total)).to_csv('data_out/z_infall_257'
+        '.txt', index=None, header=['z_infa'])
+pd.DataFrame(np.char.mod('%6d', np.transpose(np.array(
+        [crange, member_no, total_no])))).to_csv('data_out/groups_257.txt', 
+        sep='\t', index=None, header=['  c_id', 'groups', 'infall'])
+
+rs_total, vs_total = np.transpose(ld_arr('data_out/rs_vs_257.txt'))
+zi_total = ld_arr('data_out/z_infall_257.txt')
+nm_total = ld_arr('data_out/n_memb_257.txt')
+r2_total = ld_arr('data_out/r_200s_257.txt')
+
+plt.figure()
+plt.scatter(rs_total*1., vs_total, c='b', s=5.)
+#plt.scatter((rs_total*1.)[rs_sel], vs_total[rs_sel], c='r', s=5.)
+#plt.scatter(rs_total[rs_sel==False], vs_total[rs_sel==False], c='b', s=5.)
+plt.xlim(0., 3.)
+plt.ylim(0., 2.5)
+plt.xlabel(r'$r/R_{\rm{200,group}}$')
+plt.ylabel(r'$v/v_{\rm{crit}}$')
+plt.tight_layout()
+#plt.savefig('fig1_masslim_rlim.pdf')
+plt.show()

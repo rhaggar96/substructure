@@ -14,7 +14,10 @@ import time
 pi = np.pi
 mod = 1000000000000
 
-redshifts = np.array(pd.read_csv('G3X_data/G3X_300_redshifts.txt', sep='\s+'
+G3X_data = ('/home/ppxrh2/Documents/test_pollux/TheThreeHundred/playground/rh'
+        'aggar/G3X_data/')
+
+redshifts = np.array(pd.read_csv(G3X_data+'G3X_300_redshifts.txt', sep='\s+'
         ), dtype='float')
 
 plt.rc('font', family='serif', size=18)
