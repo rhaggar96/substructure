@@ -3,7 +3,7 @@ from modules import *
 run_full = False
 remove_small_hs = True
 save = False
-group_sizes = True
+group_sizes = False
 
 p_lim = 100
 mstarlim = 10.**9.5
@@ -39,6 +39,7 @@ def find_group_members(c):
 
     npar_i = ld_arr(loaddir+'npars.txt', dtype='int')[:,-1]
     npar_i = np.where(npar_i < p_lim)[0][0]
+    ids_i = ld_arr(loaddir[:-1]+'.txt')[:npar_i]
     xs_i = ld_arr(loaddir+'xs.txt')[:npar_i]
     ys_i = ld_arr(loaddir+'ys.txt')[:npar_i]
     zs_i = ld_arr(loaddir+'zs.txt')[:npar_i]
@@ -50,11 +51,13 @@ def find_group_members(c):
     rvirs_i = ld_arr(loaddir+'rvirs.txt')[:npar_i]
     subs_i = ld_arr(loaddir+'subs.txt', dtype='int')[:npar_i]
     
+    ids_i[starlim] = 0.
     xs_i[starlim], ys_i[starlim], zs_i[starlim] = 0., 0., 0.
     vx_i[starlim], vy_i[starlim], vz_i[starlim] = 0., 0., 0.
     ms_i[starlim], rvirs_i[starlim], subs_i[starlim] = 0., 0., 0.
 
     bool_t = xs_i[:, -1]>0
+    ids_i = ids_i[bool_t]
     xs_i, ys_i, zs_i = xs_i[bool_t], ys_i[bool_t], zs_i[bool_t]
     vx_i, vy_i, vz_i = vx_i[bool_t], vy_i[bool_t], vz_i[bool_t]
     ms_i, rvirs_i, subs_i = ms_i[bool_t], rvirs_i[bool_t], subs_i[bool_t]
@@ -63,11 +66,12 @@ def find_group_members(c):
             + (zs_i-zs_i[c_id])**2.)**0.5
 
     offset = len(z_list) - len(diff[0])
-
+    
     rs_tot = np.zeros(0)
     vs_tot = np.zeros(0)
     n_memb = np.array(np.zeros(0), dtype='int')
     r_virs = np.zeros(0)
+    hostid = np.zeros((1, 2))
     z_infa = np.zeros(0)
     for h_id in range(len(xs_i)):
         snap = np.where(diff[h_id]<rvirs_i[c_id])[0]
@@ -95,9 +99,12 @@ def find_group_members(c):
             n_memb = np.append(n_memb, int(np.sum(bs[0])))
             r_virs = np.append(r_virs, rvirs_i[h_id,snap])
             z_infa = np.append(z_infa, z_list[snap+offset])
+            hostid = np.append(hostid, np.array([ids_i[h_id,[snap, -1]]]), 
+                    axis=0)
+    hostid = hostid[1:]
     
     print 'group members: ' + str(np.sum(n_memb))
-    return rs_tot, vs_tot, n_memb, r_virs, z_infa
+    return rs_tot, vs_tot, n_memb, r_virs, z_infa, hostid
 
 def find_group_num_dist(nm, lims):
     nm = nm[nm>0]
@@ -110,14 +117,42 @@ def find_group_num_dist(nm, lims):
     result = np.append(result, float(np.sum((nm > lims[-1]))) / total)
     return result
 
+def find_group_paths(in_dir):
+    groups = ld_arr(in_dir+'/groups_257.txt', dtype='int')
+    c_lis = groups[:, 0]
+    ids = ld_arr(in_dir+'/host_ids_257.txt', dtype='int')
+    nms = np.transpose(ld_arr(in_dir+'/n_memb_257.txt', dtype='int'))[0]
+    
+    ids = ids[nms>0] #ids of infalling hosts (2441 hosts, with 7194 sats)
+    nms = nms[nms>0] #members in infalling hosts (sums to 7194)
+    nms_cu = np.zeros(len(nms))
+    nms_cu[0] = nms[0]
+    clus_cu = np.zeros(len(c_lis))
+    clus_cu[0] = groups[0, 1]
+    for i in range(len(nms)-1):
+        nms_cu[i+1] = nms_cu[i]+nms[i+1]
+    for i in range(len(groups)-1):
+        clus_cu[i+1] = clus_cu[i]+groups[i+1, 1]
+    nms_cu = np.array(nms_cu, dtype='int') 
+    clus_cu = np.array(clus_cu, dtype='int')
+    
+    idlim_l = 0
+    for c_i in range(len(c_lis)):
+        idlim_h = np.where(nms_cu == clus_cu[c_i])[0][0]+1
+        grp_ids = ids[idlim_l:idlim_h]
+        idlim_l = idlim_h
+    return None
 
+print find_group_paths('data_out_temp')
 
+out_p = 'data_out_temp'
 if run_full == True:
     rs_total = np.zeros(0)
     vs_total = np.zeros(0)
     nm_total = np.zeros(0)
     r2_total = np.zeros(0)
     zi_total = np.zeros(0)
+    id_total = np.zeros((1, 2))
     member_no = np.zeros(0)
     total_no = np.zeros(0)
 
@@ -129,29 +164,35 @@ if run_full == True:
         nm_total = np.append(nm_total, result[2])
         r2_total = np.append(r2_total, result[3])
         zi_total = np.append(zi_total, result[4])
+        id_total = np.append(id_total, result[5], axis=0)
         member_no = np.append(member_no, np.sum(result[2]))
         total_no = np.append(total_no, len(result[2]))
+    id_total = id_total[1:]
 
-    if not os.path.exists('data_out'):
-        os.mkdir('data_out')
+    if not os.path.exists(out_p):
+        os.mkdir(out_p)
     pd.DataFrame(np.char.mod('%12.9f', np.transpose(np.array(
-            [rs_total, vs_total])))).to_csv('data_out/rs_vs_257.txt', 
+            [rs_total, vs_total])))).to_csv(out_p+'/rs_vs_257.txt', 
             sep='\t', index=None, header=[' r/R200_host', '    v/v_crit'])
-    pd.DataFrame(np.char.mod('%6d', nm_total)).to_csv('data_out/n_memb_257'
+    pd.DataFrame(np.char.mod('%6d', nm_total)).to_csv(out_p+'/n_memb_257'
             '.txt', index=None, header=['n_memb'])
-    pd.DataFrame(np.char.mod('%12.7f', r2_total)).to_csv('data_out/r_200s_257'
+    pd.DataFrame(np.char.mod('%12.7f', r2_total)).to_csv(out_p+'/r_200s_257'
             '.txt', index=None, header=['       r_200'])
-    pd.DataFrame(np.char.mod('%6.3f', zi_total)).to_csv('data_out/z_infall_'
+    pd.DataFrame(np.char.mod('%15d', id_total)).to_csv(out_p+'/host_ids_257'
+            '.txt', sep='\t', index=None, 
+            header=['        host_id', '    z=0_host_id'])
+    pd.DataFrame(np.char.mod('%6.3f', zi_total)).to_csv(out_p+'/z_infall_'
             '257.txt', index=None, header=['z_infa'])
     pd.DataFrame(np.char.mod('%6d', np.transpose(np.array(
-            [crange, member_no, total_no])))).to_csv('data_out/groups_257.'
+            [crange, member_no, total_no])))).to_csv(out_p+'/groups_257.'
             'txt', sep='\t', index=None, header=['  c_id','groups','infall'])
 
 else:
-    rs_total, vs_total = np.transpose(ld_arr('data_out/rs_vs_257.txt'))
-    zi_total = ld_arr('data_out/z_infall_257.txt')
-    nm_total = ld_arr('data_out/n_memb_257.txt')
-    r2_total = ld_arr('data_out/r_200s_257.txt')
+    rs_total, vs_total = np.transpose(ld_arr(out_p+'/rs_vs_257.txt'))
+    zi_total = ld_arr(out_p+'/z_infall_257.txt')
+    nm_total = ld_arr(out_p+'/n_memb_257.txt')
+    r2_total = ld_arr(out_p+'/r_200s_257.txt')
+    id_total = ld_arr(out_p+'/host_ids_257.txt')
 
 
 plt.figure()
@@ -165,7 +206,7 @@ plt.ylabel(r'$v/v_{\rm{crit}}$')
 plt.tight_layout()
 if save==True:
     plt.savefig('data_out/fig1_masslim_rlim.pdf')
-plt.show()
+#plt.show()
 
 
 if group_sizes==True:
