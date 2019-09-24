@@ -2,6 +2,7 @@ from modules import *
 
 run_full = False
 save = False
+remove_small_hs = True
 
 p_lim = 100
 mstarlim = 10.**9.5
@@ -83,9 +84,11 @@ def find_group_members(c):
             vs = (vx**2. + vy**2. + vz**2.)**0.5
 
             bs = list(bound(vs, rs, ms_i[h_id,snap], rvirs_i[h_id,snap]))
-            #bs[0][h_id]=False
-            bs[0][:h_id+1]=False
-            bs[0] = bs[0] * (rvirs_i[h_id,snap]>=6.5)
+            if remove_small_hs == True:
+                bs[0][:h_id+1]=False
+                bs[0] = bs[0] * (rvirs_i[h_id,snap]>=6.5)
+            else:
+                bs[0][h_id]=False
             rs_tot = np.append(rs_tot, bs[1][bs[0]])
             vs_tot = np.append(vs_tot, bs[2][bs[0]])
             n_memb = np.append(n_memb, int(np.sum(bs[0])))
@@ -147,5 +150,6 @@ plt.ylim(0., 2.5)
 plt.xlabel(r'$r/R_{\rm{200,group}}$')
 plt.ylabel(r'$v/v_{\rm{crit}}$')
 plt.tight_layout()
-#plt.savefig('fig1_masslim_rlim.pdf')
+if save==True:
+    plt.savefig('data_out/fig1_masslim_rlim.pdf')
 plt.show()
