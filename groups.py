@@ -14,8 +14,8 @@ crange = np.array(np.loadtxt(G3X_data+'G3X_300_selected_sample_257.txt'),
 
 redshifts = ld_arr(G3X_data+'G3X_300_redshifts.txt')
 
-
 def bound(vrels, rrel, m, r200):
+    """ Determine whether a halo is bound to its host """
     rrels = rrel
     rrels[rrels==0.] = 0.001
     ke = 0.5 * (1000.*vrels)**2.
@@ -23,6 +23,10 @@ def bound(vrels, rrel, m, r200):
     vir = (ke - (ge / rrels)) < (ge / (-2.5*r200))
     v_cr = 0.001*(1.2*ge/r200)**0.5
     return vir, rrels/r200, vrels/v_cr
+
+def bound_crit(x):
+    """ y = v/vcrit, x = r/R200, find boundness condition """
+    return ((5./(3.*x)) - (2./3.))**0.5
 
 def find_group_members(c):
     c_id = clus_ids[c-1]
@@ -136,6 +140,8 @@ else:
 
 plt.figure()
 plt.scatter(rs_total*1., vs_total, c='b', s=5.)
+plt.plot(np.arange(1, 251)/100., bound_crit(np.arange(1, 251)/100.), c='r', 
+        linewidth=2.)
 plt.xlim(0., 3.)
 plt.ylim(0., 2.5)
 plt.xlabel(r'$r/R_{\rm{200,group}}$')
