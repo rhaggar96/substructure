@@ -117,6 +117,36 @@ def find_group_num_dist(nm, lims):
     result = np.append(result, float(np.sum((nm > lims[-1]))) / total)
     return result
 
+def find_group_paths(in_dir):
+    groups = ld_arr(in_dir+'/groups_257.txt', dtype='int')
+    c_lis = groups[:, 0]
+    ids = ld_arr(in_dir+'/host_ids_257.txt', dtype='int')
+    nms = np.transpose(ld_arr(in_dir+'/n_memb_257.txt', dtype='int'))[0]
+    
+    ids = ids[nms>0] #ids of infalling hosts (2441 hosts, with 7194 sats)
+    nms = nms[nms>0] #members in infalling hosts (sums to 7194)
+    nms_cu = np.zeros(len(nms))
+    nms_cu[0] = nms[0]
+    clus_cu = np.zeros(len(c_lis))
+    clus_cu[0] = groups[0, 1]
+    for i in range(len(nms)-1):
+        nms_cu[i+1] = nms_cu[i]+nms[i+1]
+    for i in range(len(groups)-1):
+        clus_cu[i+1] = clus_cu[i]+groups[i+1, 1]
+    nms_cu = np.array(nms_cu, dtype='int') 
+    clus_cu = np.array(clus_cu, dtype='int')
+    
+    idlim_l = 0
+    for c_i in range(len(c_lis)):
+        idlim_h = np.where(nms_cu == clus_cu[c_i])[0][0]+1
+        grp_ids = ids[idlim_l:idlim_h]
+        idlim_l = idlim_h
+        
+    return None
+
+print find_group_paths('data_out')
+
+
 out_p = 'data_out'
 if run_full == True:
     rs_total = np.zeros(0)
