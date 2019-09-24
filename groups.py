@@ -165,7 +165,7 @@ plt.ylabel(r'$v/v_{\rm{crit}}$')
 plt.tight_layout()
 if save==True:
     plt.savefig('data_out/fig1_masslim_rlim.pdf')
-#plt.show()
+plt.show()
 
 
 if group_sizes==True:
