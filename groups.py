@@ -1,8 +1,9 @@
 from modules import *
 
 run_full = False
-save = False
 remove_small_hs = True
+save = False
+group_sizes = True
 
 p_lim = 100
 mstarlim = 10.**9.5
@@ -98,6 +99,18 @@ def find_group_members(c):
     print 'group members: ' + str(np.sum(n_memb))
     return rs_tot, vs_tot, n_memb, r_virs, z_infa
 
+def find_group_num_dist(nm, lims):
+    nm = nm[nm>0]
+    total = float(len(nm))
+    result = np.zeros(0)
+    result = np.append(result, float(np.sum((nm <= lims[0]))) / total)
+    for i in range(len(lims)-1):
+        result = np.append(result, float(np.sum((nm > lims[i])*(nm <= 
+                lims[i+1]))) / total)
+    result = np.append(result, float(np.sum((nm > lims[-1]))) / total)
+    return result
+
+
 
 if run_full == True:
     rs_total = np.zeros(0)
@@ -153,3 +166,10 @@ plt.tight_layout()
 if save==True:
     plt.savefig('data_out/fig1_masslim_rlim.pdf')
 plt.show()
+
+
+if group_sizes==True:
+    grp_bins = [1, 17]
+    print 'Upper limits on group size bins: ' + str(grp_bins)
+    print find_group_num_dist(np.array(np.transpose(nm_total), 
+            dtype='int')[0], grp_bins)
