@@ -1,6 +1,7 @@
 from modules import *
 
 run_full = False
+save = False
 
 p_lim = 100
 mstarlim = 10.**9.5
