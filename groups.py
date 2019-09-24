@@ -13,8 +13,8 @@ crange = np.array(np.loadtxt(G3X_data+'G3X_300_selected_sample_257.txt'),
 
 redshifts = ld_arr(G3X_data+'G3X_300_redshifts.txt')
 
-
 def bound(vrels, rrel, m, r200):
+    """ Determine whether a halo is bound to its host """
     rrels = rrel
     rrels[rrels==0.] = 0.001
     ke = 0.5 * (1000.*vrels)**2.
