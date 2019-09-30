@@ -1,20 +1,21 @@
 from modules import *
 
-run_full = False
-remove_small_hs = True
+run_full = True
+remove_small_hs = False
 save = False
 group_sizes = True
 make_group_hdf5 = False
 
 p_lim = 100
+m_rat = 0.5
 mstarlim = 10.**9.5
 
 clus_ids = ld_arr(G3X_data+'ds_infor_G3X_progen/DS_G3X_snap_128_center-'
         'cluster_progenitors.txt', dtype='int')[:, 1]-(128*mod+1)  
 
-crange = np.array(np.arange(1, 325), dtype='int')
-#crange = np.array(np.loadtxt(G3X_data+'G3X_300_selected_sample_257.txt'), 
-#        dtype='int')
+#crange = np.array(np.arange(1, 325), dtype='int')
+crange = np.array(np.loadtxt(G3X_data+'G3X_300_selected_sample_257.txt'), 
+        dtype='int')
 
 redshifts = ld_arr(G3X_data+'G3X_300_redshifts.txt')
 
@@ -49,7 +50,8 @@ def find_group_members(c):
     vy_i = ld_arr(loaddir+'vy.txt')[:npar_i]
     vz_i = ld_arr(loaddir+'vz.txt')[:npar_i]
     ms_i = ld_arr(loaddir+'ms.txt')[:npar_i]
-    starlim = ld_arr(loaddir+'mstars.txt', dtype='int')[:npar_i] <= mstarlim
+    mstars = ld_arr(loaddir+'mstars.txt', dtype='int')[:npar_i]
+    starlim = mstars <= mstarlim
     rvirs_i = ld_arr(loaddir+'rvirs.txt')[:npar_i]
     subs_i = ld_arr(loaddir+'subs.txt', dtype='int')[:npar_i]
     
@@ -57,12 +59,17 @@ def find_group_members(c):
     xs_i[starlim], ys_i[starlim], zs_i[starlim] = 0., 0., 0.
     vx_i[starlim], vy_i[starlim], vz_i[starlim] = 0., 0., 0.
     ms_i[starlim], rvirs_i[starlim], subs_i[starlim] = 0., 0., 0.
+    mstars[starlim] = 0.
 
     bool_t = xs_i[:, -1]>0
     ids_i = ids_i[bool_t]
     xs_i, ys_i, zs_i = xs_i[bool_t], ys_i[bool_t], zs_i[bool_t]
     vx_i, vy_i, vz_i = vx_i[bool_t], vy_i[bool_t], vz_i[bool_t]
     ms_i, rvirs_i, subs_i = ms_i[bool_t], rvirs_i[bool_t], subs_i[bool_t]
+    mstars = mstars[bool_t]
+
+    m_rats = mstars / (ms_i + 0.001*(ms_i==0.))
+
     
     diff = ((xs_i-xs_i[c_id])**2. + (ys_i-ys_i[c_id])**2.
             + (zs_i-zs_i[c_id])**2.)**0.5
@@ -75,6 +82,7 @@ def find_group_members(c):
     r_virs = np.zeros(0)
     hostid = np.zeros((1, 2))
     z_infa = np.zeros(0)
+    ratios = np.zeros(0)
     for h_id in range(len(xs_i)):
         snap = np.where(diff[h_id]<rvirs_i[c_id])[0]
         if len(snap) > 0:
@@ -100,13 +108,14 @@ def find_group_members(c):
             vs_tot = np.append(vs_tot, bs[2][bs[0]])
             n_memb = np.append(n_memb, int(np.sum(bs[0])))
             r_virs = np.append(r_virs, rvirs_i[h_id,snap])
+            ratios = np.append(ratios, m_rats[h_id,snap])
             z_infa = np.append(z_infa, z_list[snap+offset])
             hostid = np.append(hostid, np.array([ids_i[h_id,[snap, -1]]]), 
                     axis=0)
     hostid = hostid[1:]
     
     print 'group members: ' + str(np.sum(n_memb))
-    return rs_tot, vs_tot, n_memb, r_virs, z_infa, hostid
+    return rs_tot, vs_tot, n_memb, r_virs, z_infa, hostid, ratios
 
 def find_group_num_dist(nm, lims):
     nm = nm[nm>0]
@@ -217,13 +226,15 @@ def find_group_paths(in_dir, n_clus):
     return None
 
 
-out_p = 'data_out'
+out_p = 'data_out_no_cut'
+suff = '_257_full.txt'
 if run_full == True:
     rs_total = np.zeros(0)
     vs_total = np.zeros(0)
     nm_total = np.zeros(0)
     r2_total = np.zeros(0)
     zi_total = np.zeros(0)
+    mr_total = np.zeros(0)
     id_total = np.zeros((1, 2))
     member_no = np.zeros(0)
     total_no = np.zeros(0)
@@ -237,13 +248,13 @@ if run_full == True:
         r2_total = np.append(r2_total, result[3])
         zi_total = np.append(zi_total, result[4])
         id_total = np.append(id_total, result[5], axis=0)
+        mr_total = np.append(mr_total, result[6])
         member_no = np.append(member_no, np.sum(result[2]))
         total_no = np.append(total_no, len(result[2]))
     id_total = id_total[1:]
 
     if not os.path.exists(out_p):
         os.mkdir(out_p)
-    suff = '_257.txt'
     pd.DataFrame(np.char.mod('%12.9f', np.transpose(np.array(
             [rs_total, vs_total])))).to_csv(out_p+'/rs_vs'+suff, 
             sep='\t', index=None, header=[' r/R200_host', '    v/v_crit'])
@@ -251,6 +262,8 @@ if run_full == True:
             index=None, header=['n_memb'])
     pd.DataFrame(np.char.mod('%12.7f', r2_total)).to_csv(out_p+'/r_200s'+suff,
             index=None, header=['       r_200'])
+    pd.DataFrame(np.char.mod('%10.8f', mr_total)).to_csv(out_p+'/ratios'+suff,
+            index=None, header=['mstar/mtot'])
     pd.DataFrame(np.char.mod('%15d', id_total)).to_csv(out_p+'/host_ids'+suff,
             sep='\t', index=None, 
             header=['        host_id', '    z=0_host_id'])
@@ -261,11 +274,11 @@ if run_full == True:
             sep='\t', index=None, header=['  c_id','groups','infall'])
 
 else:
-    suff = '_257.txt'
     rs_total, vs_total = np.transpose(ld_arr(out_p+'/rs_vs'+suff))
     zi_total = ld_arr(out_p+'/z_infall'+suff)
     nm_total = ld_arr(out_p+'/n_memb'+suff)
     r2_total = ld_arr(out_p+'/r_200s'+suff)
+    mr_total = ld_arr(out_p+'/ratios'+suff)
     id_total = ld_arr(out_p+'/host_ids'+suff)
 
 
