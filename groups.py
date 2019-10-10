@@ -2,13 +2,14 @@ from modules import *
 
 run_full = False
 remove_high_mrat = True
-save_fig = True
+save_fig = False
 group_sizes = True
 make_group_hdf5 = False
 
 #remove_small_hs = False
 
-out_p = 'data_out_10.5-mass_limit_0.3-rat_cut'#cut_mrat_cut'#no_cut'#
+out_p = ('/run/media/ppxrh2/166AA4B87A2DD3B7/MergerTreeAHF/Infalling_Groups/'
+        'original_back_tracking/data_out_10.5-mass_limit_0.3-rat_cut')
 suff = '_257.txt'
 
 p_lim = 20
@@ -140,12 +141,12 @@ def find_group_members(c):
                     axis=0)
     hostid = hostid[1:]
     
-    print 'group members: ' + str(np.sum(n_memb))
+    print('group members: ' + str(np.sum(n_memb)))
     return rs_tot, vs_tot, n_memb, r_virs, z_infa, hostid, ratios
 
 
 def find_group_num_dist(nm, lims):
-    #nm = nm[nm>0]
+    nm = nm[nm>0]
     total = float(len(nm))
     result = np.zeros(0)
     result = np.append(result, float(np.sum((nm <= lims[0]))) / total)
@@ -156,6 +157,7 @@ def find_group_num_dist(nm, lims):
     return result
 
 
+#######################################
 #function needs revising and improving:
 def find_group_paths(in_dir, suf):
     """ Writes final members of groups, and the snapshot of infall, 
@@ -181,7 +183,7 @@ def find_group_paths(in_dir, suf):
     idlim_l = 0
     for c_i in range(len(c_lis)):
         c = c_lis[c_i]
-        print c
+        print(c)
         c_h = clus_ids[c-1]
         idlim_h = np.where(nms_cu == clus_cu[c_i])[0][0]+1
         grp_ids = ids[idlim_l:idlim_h]
@@ -266,7 +268,7 @@ if run_full == True:
     total_no = np.zeros(0)
 
     for c_val in crange:
-        print c_val
+        print(c_val)
         result = find_group_members(c_val)
         rs_total = np.append(rs_total, result[0])
         vs_total = np.append(vs_total, result[1])
@@ -315,7 +317,7 @@ for i in range(len(nm_total)):
 plt.figure()
 plt.scatter(rs_total*1., vs_total, s=2., c='b')#mr_colour
 #plt.colorbar()
-print len(rs_total)
+print(len(rs_total))
 plt.plot(np.arange(1, 251)/100., bound_crit(np.arange(1, 251)/100.), c='r', 
         linewidth=2.)
 plt.xlim(0., 3.)
@@ -330,10 +332,10 @@ plt.show()
 
 
 if group_sizes==True:
-    grp_bins = [0, 1, 17]
-    print 'Upper limits on group size bins: ' + str(grp_bins)
-    print find_group_num_dist(np.array(np.transpose(nm_total), 
-            dtype='int')[0], grp_bins)
+    grp_bins = [1, 17]
+    print('Upper limits on group size bins: ' + str(grp_bins))
+    print(find_group_num_dist(np.array(np.transpose(nm_total), 
+            dtype='int')[0], grp_bins))
 
 
 if make_group_hdf5==True:
