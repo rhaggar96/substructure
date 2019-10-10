@@ -1,14 +1,20 @@
 from modules import *
 
-run_full = True
-remove_small_hs = False
-save = False
+run_full = False
+remove_high_mrat = True
+save_fig = True
 group_sizes = True
 make_group_hdf5 = False
 
-p_lim = 100
-m_rat = 0.5
+#remove_small_hs = False
+
+out_p = 'data_out_10.5-mass_limit_0.3-rat_cut'#cut_mrat_cut'#no_cut'#
+suff = '_257.txt'
+
+p_lim = 20
+m_rat = 0.3
 mstarlim = 10.**9.5
+mlim = 10.**10.5
 
 clus_ids = ld_arr(G3X_data+'ds_infor_G3X_progen/DS_G3X_snap_128_center-'
         'cluster_progenitors.txt', dtype='int')[:, 1]-(128*mod+1)  
@@ -18,6 +24,7 @@ crange = np.array(np.loadtxt(G3X_data+'G3X_300_selected_sample_257.txt'),
         dtype='int')
 
 redshifts = ld_arr(G3X_data+'G3X_300_redshifts.txt')
+
 
 def bound(vrels, rrel, m, r200):
     """ Determine whether a halo is bound to its host """
@@ -29,11 +36,15 @@ def bound(vrels, rrel, m, r200):
     v_cr = 0.001*(1.2*ge/r200)**0.5
     return vir, rrels/r200, vrels/v_cr
 
+
 def bound_crit(x):
     """ y = v/vcrit, x = r/R200, find boundness condition """
     return ((5./(3.*x)) - (2./3.))**0.5
 
+
 def find_group_members(c):
+    """ Finds bound group members, snapshot of infall, and quantities 
+    including r200, stellar mass fraction, etc. of host """
     c_id = clus_ids[c-1]
     loaddir = ('/run/media/ppxrh2/166AA4B87A2DD3B7/MergerTreeAHF/MergerTree'
             'AHF_General_Tree_Comp/NewMDCLUSTER_'
@@ -41,19 +52,19 @@ def find_group_members(c):
     z_list = redshifts[c-1]
 
     npar_i = ld_arr(loaddir+'npars.txt', dtype='int')[:,-1]
-    npar_i = np.where(npar_i < p_lim)[0][0]
-    ids_i = ld_arr(loaddir[:-1]+'.txt')[:npar_i]
-    xs_i = ld_arr(loaddir+'xs.txt')[:npar_i]
-    ys_i = ld_arr(loaddir+'ys.txt')[:npar_i]
-    zs_i = ld_arr(loaddir+'zs.txt')[:npar_i]
-    vx_i = ld_arr(loaddir+'vx.txt')[:npar_i]
-    vy_i = ld_arr(loaddir+'vy.txt')[:npar_i]
-    vz_i = ld_arr(loaddir+'vz.txt')[:npar_i]
-    ms_i = ld_arr(loaddir+'ms.txt')[:npar_i]
-    mstars = ld_arr(loaddir+'mstars.txt', dtype='int')[:npar_i]
-    starlim = mstars <= mstarlim
-    rvirs_i = ld_arr(loaddir+'rvirs.txt')[:npar_i]
-    subs_i = ld_arr(loaddir+'subs.txt', dtype='int')[:npar_i]
+    npar_i = np.where(npar_i >= p_lim)[0][-1]
+    ids_i = ld_arr(loaddir[:-1]+'.txt')[:npar_i+1]
+    xs_i = ld_arr(loaddir+'xs.txt')[:npar_i+1]
+    ys_i = ld_arr(loaddir+'ys.txt')[:npar_i+1]
+    zs_i = ld_arr(loaddir+'zs.txt')[:npar_i+1]
+    vx_i = ld_arr(loaddir+'vx.txt')[:npar_i+1]
+    vy_i = ld_arr(loaddir+'vy.txt')[:npar_i+1]
+    vz_i = ld_arr(loaddir+'vz.txt')[:npar_i+1]
+    ms_i = ld_arr(loaddir+'ms.txt')[:npar_i+1]
+    mstars = ld_arr(loaddir+'mstars.txt', dtype='int')[:npar_i+1]
+    starlim = (mstars < mstarlim) * (ms_i < mlim)
+    rvirs_i = ld_arr(loaddir+'rvirs.txt')[:npar_i+1]
+    subs_i = ld_arr(loaddir+'subs.txt', dtype='int')[:npar_i+1]
     
     ids_i[starlim] = 0.
     xs_i[starlim], ys_i[starlim], zs_i[starlim] = 0., 0., 0.
@@ -69,7 +80,23 @@ def find_group_members(c):
     mstars = mstars[bool_t]
 
     m_rats = mstars / (ms_i + 0.001*(ms_i==0.))
+    if remove_high_mrat == True:
+        bool_t = m_rats < m_rat
+        ids_i = ids_i*bool_t
+        xs_i, ys_i, zs_i = xs_i*bool_t, ys_i*bool_t, zs_i*bool_t
+        vx_i, vy_i, vz_i = vx_i*bool_t, vy_i*bool_t, vz_i*bool_t
+        ms_i, rvirs_i, subs_i = ms_i*bool_t, rvirs_i*bool_t, subs_i*bool_t
+        mstars = mstars*bool_t
 
+        bool_t = m_rats[:, -1] < m_rat
+        ids_i = ids_i[bool_t]
+        xs_i, ys_i, zs_i = xs_i[bool_t], ys_i[bool_t], zs_i[bool_t]
+        vx_i, vy_i, vz_i = vx_i[bool_t], vy_i[bool_t], vz_i[bool_t]
+        ms_i, rvirs_i, subs_i = ms_i[bool_t], rvirs_i[bool_t], subs_i[bool_t]
+        mstars = mstars[bool_t]
+
+    #ensure cluster halo is not lost
+    c_id = np.where(np.array(ids_i[:,-1],dtype='int')-(128*mod+1==c_id))[0][0]
     
     diff = ((xs_i-xs_i[c_id])**2. + (ys_i-ys_i[c_id])**2.
             + (zs_i-zs_i[c_id])**2.)**0.5
@@ -99,11 +126,10 @@ def find_group_members(c):
             vs = (vx**2. + vy**2. + vz**2.)**0.5
 
             bs = list(bound(vs, rs, ms_i[h_id,snap], rvirs_i[h_id,snap]))
-            if remove_small_hs == True:
-                bs[0][:h_id+1]=False
-                bs[0] = bs[0] * (rvirs_i[h_id,snap]>=6.5)
-            else:
-                bs[0][h_id]=False
+            bs[0][h_id]=False
+            #remove bound objects more massive than host:
+            bs[0] *= ms_i[:,snap] < ms_i[h_id,snap]
+
             rs_tot = np.append(rs_tot, bs[1][bs[0]])
             vs_tot = np.append(vs_tot, bs[2][bs[0]])
             n_memb = np.append(n_memb, int(np.sum(bs[0])))
@@ -117,8 +143,9 @@ def find_group_members(c):
     print 'group members: ' + str(np.sum(n_memb))
     return rs_tot, vs_tot, n_memb, r_virs, z_infa, hostid, ratios
 
+
 def find_group_num_dist(nm, lims):
-    nm = nm[nm>0]
+    #nm = nm[nm>0]
     total = float(len(nm))
     result = np.zeros(0)
     result = np.append(result, float(np.sum((nm <= lims[0]))) / total)
@@ -128,17 +155,18 @@ def find_group_num_dist(nm, lims):
     result = np.append(result, float(np.sum((nm > lims[-1]))) / total)
     return result
 
-def find_group_paths(in_dir, n_clus):
-    groups = ld_arr(in_dir+'/groups_324.txt', dtype='int')
-    if len(groups) != n_clus:
-        groups = groups[:n_clus]
-    c_lis = groups[:, 0]
-    ids = ld_arr(in_dir+'/host_ids_324.txt', dtype='int')
-    nms = np.transpose(ld_arr(in_dir+'/n_memb_324.txt', dtype='int'))[0]
 
-    ids = ids[nms>0] #ids of infalling hosts (2441 hosts, with 7194 sats
-                     #(for 257 clusters))
-    nms = nms[nms>0] #members in infalling hosts (sums to 7194)
+#function needs revising and improving:
+def find_group_paths(in_dir, suf):
+    """ Writes final members of groups, and the snapshot of infall, 
+    into a seperate HDF5 file for each cluster """
+    groups = ld_arr(in_dir+'/groups'+suf, dtype='int')
+    c_lis = groups[:, 0]
+    ids = ld_arr(in_dir+'/host_ids'+suf, dtype='int')
+    nms = np.transpose(ld_arr(in_dir+'/n_memb'+suf, dtype='int'))[0]
+
+    ids = ids[nms>0] #ids of infalling hosts (~2000 hosts, with ~7000 sats)
+    nms = nms[nms>0] #members in infalling hosts (sums to ~7000)
     nms_cu = np.zeros(len(nms))
     nms_cu[0] = nms[0]
     clus_cu = np.zeros(len(c_lis))
@@ -178,6 +206,7 @@ def find_group_paths(in_dir, n_clus):
                 dtype='int')[:npar_i] <= mstarlim
         rvirs_i = ld_arr(loaddir+'rvirs.txt')[:npar_i]
         subs_i = ld_arr(loaddir+'subs.txt', dtype='int')[:npar_i]
+        mstars = ld_arr(loaddir+'mstars.txt', dtype='int')[:npar_i]
         
         ids_i[starlim] = 0.
         xs_i[starlim], ys_i[starlim], zs_i[starlim] = 0., 0., 0.
@@ -189,12 +218,11 @@ def find_group_paths(in_dir, n_clus):
         xs_i, ys_i, zs_i = xs_i[bool_t], ys_i[bool_t], zs_i[bool_t]
         vx_i, vy_i, vz_i = vx_i[bool_t], vy_i[bool_t], vz_i[bool_t]
         ms_i, rvirs_i, subs_i = ms_i[bool_t], rvirs_i[bool_t], subs_i[bool_t]
-
+        #####CHECKED TO HERE#####
         for i in range(len(inf_id)):
             inf_id[i] = np.sum(bool_t[:inf_id[i]])
         inf_snap = inf_snap - 129 + len(xs_i[0])
         inf_id = inf_id - 1
-
 
         hf = h5py.File('data_out_324/group_lists/cluster_%03d.hdf5' % c, 'w')
         
@@ -226,8 +254,6 @@ def find_group_paths(in_dir, n_clus):
     return None
 
 
-out_p = 'data_out_no_cut'
-suff = '_257_full.txt'
 if run_full == True:
     rs_total = np.zeros(0)
     vs_total = np.zeros(0)
@@ -280,10 +306,16 @@ else:
     r2_total = ld_arr(out_p+'/r_200s'+suff)
     mr_total = ld_arr(out_p+'/ratios'+suff)
     id_total = ld_arr(out_p+'/host_ids'+suff)
+groups = ld_arr(out_p+'/groups'+suff)
 
+mr_colour = np.zeros(0)
+for i in range(len(nm_total)):
+    mr_colour = np.append(mr_colour, np.array(int(nm_total[i])*list(mr_total[i])))
 
 plt.figure()
-plt.scatter(rs_total*1., vs_total, c='b', s=3.)
+plt.scatter(rs_total*1., vs_total, s=2., c='b')#mr_colour
+#plt.colorbar()
+print len(rs_total)
 plt.plot(np.arange(1, 251)/100., bound_crit(np.arange(1, 251)/100.), c='r', 
         linewidth=2.)
 plt.xlim(0., 3.)
@@ -291,17 +323,18 @@ plt.ylim(0., 2.5)
 plt.xlabel(r'$r/R_{\rm{200,group}}$')
 plt.ylabel(r'$v/v_{\rm{crit}}$')
 plt.tight_layout()
-if save==True:
+if save_fig==True:
     plt.savefig(out_p+'/fig1_masslim_rlim.pdf')
     plt.savefig(out_p+'/fig1_masslim_rlim.png', dpi=500)
 plt.show()
 
 
 if group_sizes==True:
-    grp_bins = [1, 17]
+    grp_bins = [0, 1, 17]
     print 'Upper limits on group size bins: ' + str(grp_bins)
     print find_group_num_dist(np.array(np.transpose(nm_total), 
             dtype='int')[0], grp_bins)
 
-if make_group_hdf5 == True:
-    find_group_paths('data_out_324', 324)
+
+if make_group_hdf5==True:
+    find_group_paths(out_p, suff)
