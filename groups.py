@@ -330,6 +330,35 @@ if save_fig==True:
     plt.savefig(out_p+'/fig1_masslim_rlim.png', dpi=500)
 plt.show()
 
+def density_estimation(m1, m2, crop=False):
+    """ Smoothed density for contour plot """
+    x, y = np.linspace(xmin, xmax, steps), np.linspace(ymin, ymax, steps)
+    X, Y = np.meshgrid(x, y)
+    positions = np.vstack([X.ravel(), Y.ravel()])
+    values = np.vstack([m1, m2])
+
+    kernel = stats.gaussian_kde(values) 
+    Z = np.reshape(kernel(positions).T, X.shape)
+
+    if crop==True:
+        bnd = Y < bound_crit(X)
+        Z[bnd==False] = 0.
+
+    return X, Y, Z
+
+
+
+xmin, xmax, ymin, ymax, steps = 0., 2.6, 0., 2.5, 100
+plt.figure(figsize=(8, 6))
+X, Y, Z = density_estimation(rs_total, vs_total, True)
+plt.contour(X, Y, Z, colors='b', levels=[0.3,0.5,0.7,0.9], 
+        linewidths=[1., 1.5, 2., 2.5])#2.)
+plt.plot((np.arange(1,2501)/1000.),bound_crit(np.arange(1,2501)/1000.), 
+        c='k', linewidth=2.)
+plt.xlim([xmin, xmax])
+plt.ylim([ymin, ymax])
+plt.show()
+
 
 if group_sizes==True:
     grp_bins = [1, 17]
