@@ -288,6 +288,74 @@ def find_member_final_states(c, grp_memb_dat):
     return memb_final_id, host_final_id, bound_f>0, rs_f, vs_f
 
 
+################WORKING ON FUNCTION
+def find_member_trees(c, grp_memb_dat):
+    total_tree = np.array(pd.read_csv('/run/media/ppxrh2/166AA4B87A2DD3B7/'
+            'MergerTreeAHF/MergerTreeAHF_ASCII/MergerTree_GadgetX-NewMD'
+            'CLUSTER_%04d.txt-CRMratio2' % c, sep='\s+', skiprows=2, 
+            usecols=[0], dtype='str')[:-1], dtype='int')[:, 0]
+
+    grp_memb_dat = grp_memb_dat[np.array(grp_memb_dat[:, 4], dtype='int')==c]
+    memb_init_id = np.array(grp_memb_dat[:, 2], dtype='int')
+    host_init_id = np.array(grp_memb_dat[:, 3], dtype='int')
+
+    memb_final_id = np.array(np.zeros(0), dtype='int')
+    host_final_id = np.array(np.zeros(0), dtype='int')
+
+    for i in range(len(memb_init_id)):
+        memb_final_id = np.append(memb_final_id, find_branch(np.array([
+                memb_init_id[i]]), total_tree, keep_sing=True)[-1])
+        if host_init_id[i] != host_init_id[i-1]:
+            host_final_id = np.append(host_final_id, find_branch(np.array([
+                host_init_id[i]]), total_tree, keep_sing=True)[-1])
+        else:
+            host_final_id = np.append(host_final_id, host_final_id[-1])
+
+    memb_snaps, host_snaps = memb_final_id//mod, host_final_id//mod
+    memb_ids = memb_final_id-(mod*memb_snaps+1)
+    host_ids = host_final_id-(mod*host_snaps+1)
+    survive = (memb_snaps==host_snaps)
+    survive = np.where(survive==True)[0]
+    
+    h_info_dir = ('/run/media/ppxrh2/166AA4B87A2DD3B7/NewMDCLUSTER_data/'
+            'reduced_cluster_info/')
+    xs = h5py.File(h_info_dir + 'xs/CLUSTER_%04d_xs' % c, 'r')
+    ys = h5py.File(h_info_dir + 'ys/CLUSTER_%04d_ys' % c, 'r')
+    zs = h5py.File(h_info_dir + 'zs/CLUSTER_%04d_zs' % c, 'r')
+    vx = h5py.File(h_info_dir + 'vx/CLUSTER_%04d_vx' % c, 'r')
+    vy = h5py.File(h_info_dir + 'vy/CLUSTER_%04d_vy' % c, 'r')
+    vz = h5py.File(h_info_dir + 'vz/CLUSTER_%04d_vz' % c, 'r')
+    ms = h5py.File(h_info_dir + 'ms/CLUSTER_%04d_ms' % c, 'r')
+    r200s = h5py.File(h_info_dir + 'rvirs/CLUSTER_%04d_rvirs' % c, 'r')
+
+    rs_f, vs_f = np.zeros(len(memb_final_id)), np.zeros(len(memb_final_id))
+    bound_f = np.array(np.zeros(len(memb_final_id)), dtype='int')
+    for i in survive:
+        s = memb_snaps[i]
+        xs_s = np.array(xs['%03d'%s])
+        ys_s = np.array(ys['%03d'%s])
+        zs_s = np.array(zs['%03d'%s])
+        r_si = ((xs_s[memb_ids[i]]-xs_s[host_ids[i]])**2.
+                + (ys_s[memb_ids[i]]-ys_s[host_ids[i]])**2.
+                + (zs_s[memb_ids[i]]-zs_s[host_ids[i]])**2.)**0.5
+        vx_s = np.array(vx['%03d'%s])
+        vy_s = np.array(vy['%03d'%s])
+        vz_s = np.array(vz['%03d'%s])
+        v_si = ((vx_s[memb_ids[i]]-vx_s[host_ids[i]])**2.
+                + (vy_s[memb_ids[i]]-vy_s[host_ids[i]])**2.
+                + (vz_s[memb_ids[i]]-vz_s[host_ids[i]])**2.)**0.5
+        ms_s, r200s_s = np.array(ms['%03d'%s]), np.array(r200s['%03d'%s])
+        bndres = bound(np.array([v_si]), np.array([r_si]), ms_s[host_ids[i]], 
+                r200s_s[host_ids[i]])
+        rs_f[i], vs_f[i] = bndres[1], bndres[2]
+        bound_f[i] += 1*bndres[0]
+
+    return memb_final_id, host_final_id, bound_f>0, rs_f, vs_f
+
+
+
+
+
 def find_branch(id_a, id_list, keep_sing=False):
     id = id_a[-1]
     tree_search = np.where(id_list==id)[0]
