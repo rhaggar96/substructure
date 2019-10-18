@@ -3,13 +3,20 @@ from modules import *
 
 run_infall_finder = False
 run_find_bound_groups = False
-savefig = True
+savefig = False
+showfig = True
 plot_contours = True
-plot_scatter = True
+plot_contours_z0 = False
+plot_scatter = False
+plot_scatter_z0 = False
 run_final_state_finder = False
 
 out_dir = ('/run/media/ppxrh2/166AA4B87A2DD3B7/MergerTreeAHF/Infalling_Groups'
         '/MergerTreeAHF_Infalling_Groups/')
+fig_dir = ('/home/ppxrh2/Documents/test_pollux/TheThreeHundred/playground/'
+        'rhaggar/substructure_data/figures/')
+track_dir = ('/home/ppxrh2/Documents/test_pollux/TheThreeHundred/playground/'
+        'rhaggar/substructure_data/tracking_data/')
 crange = np.array(np.loadtxt('/home/ppxrh2/Documents/test_pollux/TheThree'
         'Hundred/playground/rhaggar/G3X_data/G3X_300_selected_sample_257'
         '.txt'), dtype='int')
@@ -39,7 +46,7 @@ def find_groups(c, outdir, m_lim=0., ms_lim=0., rat_lim=1.):
             + 'CLUSTER_%04d.txt' % c, dtype='int')[c_ids[c-1]]
 
     halo_ids = halo_ids[halo_ids > 0]
-    keys = np.char.mod(u'%03d', halo_ids / mod)
+    keys = np.char.mod(u'%03d', halo_ids // mod)
 
 
     j = keys[0]
@@ -215,6 +222,9 @@ def find_bound_groups(c, loaddir, m_lim=0., ms_lim=0., rat_lim=1.):
 
 
 def find_member_final_states(c, grp_memb_dat):
+    """ Find the final ID of infalling groups and each of their 
+    members, and for those which both survive, find the relative
+    r and v. No limits on mass, etc. after z_infall """
     total_tree = np.array(pd.read_csv('/run/media/ppxrh2/166AA4B87A2DD3B7/'
             'MergerTreeAHF/MergerTreeAHF_ASCII/MergerTree_GadgetX-NewMD'
             'CLUSTER_%04d.txt-CRMratio2' % c, sep='\s+', skiprows=2, 
@@ -274,11 +284,8 @@ def find_member_final_states(c, grp_memb_dat):
                 r200s_s[host_ids[i]])
         rs_f[i], vs_f[i] = bndres[1], bndres[2]
         bound_f[i] += 1*bndres[0]
-        
-
 
     return memb_final_id, host_final_id, bound_f>0, rs_f, vs_f
-
 
 
 def find_branch(id_a, id_list, keep_sing=False):
@@ -341,7 +348,6 @@ def density_estimation(m1, m2, crop=False):
 
 
 
-
 if run_infall_finder==True:
     for c_id in range(1, 325):
         print(c_id)
@@ -362,16 +368,17 @@ if run_find_bound_groups==True:
     pd.DataFrame(np.transpose(np.array([np.char.mod('%12.9f', rs_total), 
             np.char.mod('%12.9f', vs_total), np.char.mod('%15d', id_total), 
             np.char.mod('%15d', hs_total), np.char.mod('%04d', clus_nos)]))
-            ).to_csv('forward_tracking.txt', index=None, sep='\t', header=[
-            '    rs_total', '    vs_total', 'ids_bound_membs', 
+            ).to_csv(track_dir+'forward_tracking.txt', index=None, sep='\t', 
+            header=['    rs_total', '    vs_total', 'ids_bound_membs', 
             '  id_group_halo', 'clus'])
-total = ld_arr('forward_tracking.txt')
+total = ld_arr(track_dir+'forward_tracking.txt')
 rs_total, vs_total, id_total = total[:, 0], total[:, 1], total[:, 2]//mod
 
 
+steps=100
 if plot_contours==True:
-    xmin, xmax, ymin, ymax, steps = 0., 2.6, 0., 2.5, 100
-    final_s_in = ld_arr('forward_tracking_finalsnap.txt')
+    xmin, xmax, ymin, ymax = 0., 2.6, 0., 2.5
+    final_s_in = ld_arr(track_dir+'forward_tracking_finalsnap.txt')
     final_s = np.array(final_s_in[:, :2], dtype='int')//mod
     final_s_bd = np.array(final_s_in[:, 2], dtype='int')
 
@@ -415,16 +422,16 @@ if plot_contours==True:
 
     plt.tight_layout()
     if savefig==True:   
-        plt.savefig('figures/survivors_infall_params_con.png', dpi=500)
-        plt.savefig('figures/survivors_infall_params_con.pdf')
-    plt.show()
+        plt.savefig(figdir+'survivors_infall_params_con.png', dpi=500)
+        plt.savefig(figdir+'survivors_infall_params_con.pdf')
+    if showfig==True:
+        plt.show()
     plt.close()
     
 
+    plt.figure(figsize=(7, 6))
     boolean = (final_s[:, 1]==128) * (final_s[:, 0]<128)
     rs_t, vs_t = rs_total[boolean], vs_total[boolean] 
-    plt.figure(figsize=(7, 6))
-
     X, Y, Z = density_estimation(rs_t, vs_t, True)
     plt.contour(X, Y, Z, colors='k', levels=[0.3,0.5,0.7,0.9], 
             linewidths=[1., 1.5, 2., 2.5])
@@ -437,17 +444,16 @@ if plot_contours==True:
     plt.xlabel(r'$r_{\rm{infall}}/R_{\rm{200,group}}$')
     plt.ylabel(r'$v_{\rm{infall}}/v_{\rm{crit}}$')
 
-    plt.tight_layout()
     if savefig==True:   
-        plt.savefig('figures/destroyed_infall_params_con.png', dpi=500)
-        plt.savefig('figures/destroyed_infall_params_con.pdf')
-    plt.show()
+        plt.savefig(figdir+'destroyed_infall_params_con.png', dpi=500)
+        plt.savefig(figdir+'destroyed_infall_params_con.pdf')
+    if showfig==True:
+        plt.show()
     plt.close()
 
-
 if plot_scatter==True:
-    xmin, xmax, ymin, ymax, steps = 0., 2.6, 0., 2.5, 100
-    final_s_in = ld_arr('forward_tracking_finalsnap.txt')
+    xmin, xmax, ymin, ymax = 0., 2.6, 0., 2.5
+    final_s_in = ld_arr(track_dir+'forward_tracking_finalsnap.txt')
     final_s = np.array(final_s_in[:, :2], dtype='int')//mod
     final_s_bd = np.array(final_s_in[:, 2], dtype='int')
 
@@ -469,8 +475,8 @@ if plot_scatter==True:
     plt.subplot(122)
     plt.scatter(rs_t[fnl_s_bd>0], vs_t[fnl_s_bd>0], s=2., c='r', 
             label='Bound at $z=0$')
-    plt.scatter(rs_t[fnl_s_bd==0], vs_t[fnl_s_bd==0], s=2., c='b', 
-            label='Unbound at $z=0$')
+    plt.scatter(rs_t[fnl_s_bd==0], vs_t[fnl_s_bd==0], s=8., c='b', 
+            marker='x', linewidth=0.8, label='Unbound at $z=0$')
     plt.legend()
     plt.plot((np.arange(1,2501)/1000.),bound_crit(np.arange(1,2501)/1000.), 
             c='k', linewidth=2.)
@@ -481,9 +487,10 @@ if plot_scatter==True:
 
     plt.tight_layout()
     if savefig==True:   
-        plt.savefig('figures/survivors_infall_params_sca.png', dpi=500)
-        plt.savefig('figures/survivors_infall_params_sca.pdf')
-    plt.show()
+        plt.savefig(figdir+'survivors_infall_params_sca.png', dpi=500)
+        plt.savefig(figdir+'survivors_infall_params_sca.pdf')
+    if showfig==True:
+        plt.show()
     plt.close()
     
 
@@ -502,13 +509,113 @@ if plot_scatter==True:
 
     plt.tight_layout()
     if savefig==True:   
-        plt.savefig('figures/destroyed_infall_params_sca.png', dpi=500)
-        plt.savefig('figures/destroyed_infall_params_sca.pdf')
-    plt.show()
+        plt.savefig(figdir+'destroyed_infall_params_sca.png', dpi=500)
+        plt.savefig(figdir+'destroyed_infall_params_sca.pdf')
+    if showfig==True:
+        plt.show()
     plt.close()
 
+if plot_contours_z0==True:
+    xmin, xmax, ymin, ymax = 0., 6., 0., 6.
+    final_s_in = ld_arr(track_dir+'forward_tracking_finalsnap.txt')
+    rs_total, vs_total = final_s_in[:, 3], final_s_in[:, 4]
+    final_s = np.array(final_s_in[:, :2], dtype='int')//mod
+    final_s_bd = np.array(final_s_in[:, 2], dtype='int')
 
+    boolean = (final_s[:, 1]==128) * (final_s[:, 0]==128)
+    rs_t, vs_t = rs_total[boolean], vs_total[boolean] 
+    fnl_s_bd = final_s_bd[boolean]
+    plt.figure(figsize=(14, 6))
 
+    plt.subplot(121)
+    boolean = (rs_t < xmax) * (vs_t < ymax)
+    rs_t_all, vs_t_all = rs_t[boolean], vs_t[boolean]
+    X, Y, Z = density_estimation(rs_t_all, vs_t_all, False)
+    plt.contour(X, Y, Z, colors='g', levels=[0.01, 0.04, 0.1, 0.25], 
+            linewidths=[1., 1.5, 2., 2.5])
+    plt.plot([-1,-1], [-1,-1], c='g', label='All surviving galaxies')
+    plt.legend()
+    plt.plot((np.arange(1,2501)/1000.),bound_crit(np.arange(1,2501)/1000.), 
+            c='k', linewidth=2.)
+    plt.xlim([xmin, xmax])
+    plt.ylim([ymin, ymax])
+    plt.xlabel(r'$r_{z=0}/R_{\rm{200,group}}$')
+    plt.ylabel(r'$v_{z=0}/v_{\rm{crit}}$')
+
+    plt.subplot(122)
+    X, Y, Z = density_estimation(rs_t[fnl_s_bd>0], 
+            vs_t[fnl_s_bd>0], True)
+    plt.contour(X, Y, Z, colors='r', levels=[0.3,0.5,0.7,0.9], 
+            linewidths=[1., 1.5, 2., 2.5], linestyles='-.')
+    X, Y, Z = density_estimation(rs_t[boolean*(fnl_s_bd==0)], 
+            vs_t[boolean*(fnl_s_bd==0)], 'upper')
+    plt.contour(X, Y, Z, colors='b', levels=[0.015, 0.05, 0.1, 0.18], 
+            linewidths=[1., 1.5, 2., 2.5])
+
+    plt.plot([-1,-1], [-1,-1], c='r', label='Bound at $z=0$', linestyle='-.')
+    plt.plot([-1,-1], [-1,-1], c='b', label='Unbound at $z=0$')
+    plt.legend()
+    plt.plot((np.arange(1,2501)/1000.),bound_crit(np.arange(1,2501)/1000.), 
+            c='k', linewidth=2.)
+    plt.xlim([xmin, xmax])
+    plt.ylim([ymin, ymax])
+    plt.xlabel(r'$r_{z=0}/R_{\rm{200,group}}$')
+    plt.ylabel(r'$v_{z=0}/v_{\rm{crit}}$')
+
+    plt.tight_layout()
+    if savefig==True:   
+        plt.savefig(figdir+'survivors_z=0_params_con.png', dpi=500)
+        plt.savefig(figdir+'survivors_z=0_params_con.pdf')
+    if showfig==True:
+        plt.show()
+    plt.close()
+
+if plot_scatter_z0==True:
+    xmin, xmax, ymin, ymax = 0., 6., 0., 6.
+    final_s_in = ld_arr(track_dir+'forward_tracking_finalsnap.txt')
+    rs_total, vs_total = final_s_in[:, 3], final_s_in[:, 4]
+    final_s = np.array(final_s_in[:, :2], dtype='int')//mod
+    final_s_bd = np.array(final_s_in[:, 2], dtype='int')
+
+    boolean = (final_s[:, 1]==128) * (final_s[:, 0]==128)
+    rs_t, vs_t = rs_total[boolean], vs_total[boolean] 
+    fnl_s_bd = final_s_bd[boolean]
+    plt.figure(figsize=(14, 6))
+
+    plt.subplot(121)
+    boolean = (rs_t < xmax) * (vs_t < ymax)
+    rs_t_all, vs_t_all = rs_t[boolean], vs_t[boolean]
+    plt.scatter(rs_t_all, vs_t_all, s=2., c='g', 
+            label='All surviving galaxies')
+    plt.legend(frameon=True, edgecolor='k', framealpha=1.)
+    plt.plot((np.arange(1,2501)/1000.),bound_crit(np.arange(1,2501)/1000.), 
+            c='k', linewidth=2.)
+    plt.xlim([xmin, xmax])
+    plt.ylim([ymin, ymax])
+    plt.xlabel(r'$r_{z=0}/R_{\rm{200,group}}$')
+    plt.ylabel(r'$v_{z=0}/v_{\rm{crit}}$')
+
+    plt.subplot(122)
+    plt.scatter(rs_t[fnl_s_bd>0], vs_t[fnl_s_bd>0], s=2., c='r', 
+            label='Bound at $z=0$')
+    plt.scatter(rs_t[fnl_s_bd==0], vs_t[fnl_s_bd==0], s=8., c='b', 
+            marker='x', linewidth=0.8, label='Unbound at $z=0$')
+    plt.legend(frameon=True, edgecolor='k', framealpha=1.)
+    plt.plot((np.arange(1,2501)/1000.),bound_crit(np.arange(1,2501)/1000.), 
+            c='k', linewidth=2.)
+    plt.xlim([xmin, xmax])
+    plt.ylim([ymin, ymax])
+    plt.xlabel(r'$r_{z=0}/R_{\rm{200,group}}$')
+    plt.ylabel(r'$v_{z=0}/v_{\rm{crit}}$')
+
+    plt.tight_layout()
+    if savefig==True:   
+        plt.savefig(figdir+'survivors_z=0_params_sca.png', dpi=500)
+        plt.savefig(figdir+'survivors_z=0_params_sca.pdf')
+    if showfig==True:
+        plt.show()
+    plt.close()
+    
 
 if run_final_state_finder==True:
     final_id = np.array(np.zeros(0), dtype='int')
@@ -527,6 +634,8 @@ if run_final_state_finder==True:
     pd.DataFrame(np.transpose(np.array([np.char.mod('%15d', final_id), 
             np.char.mod('%15d', final_hs), final_bd, np.char.mod('%12.9f', 
             final_rs), np.char.mod('%12.9f', final_vs)]))
-            ).to_csv('forward_tracking_finalsnap.txt', index=None, sep='\t', 
-            header=['final_ids_membs', 'final_ids_group', 'bound', 
+            ).to_csv(track_dir+'forward_tracking_finalsnap.txt', index=None, 
+            sep='\t', header=['final_ids_membs', 'final_ids_group', 'bound', 
             '    rs_final', '    vs_final'])
+
+
