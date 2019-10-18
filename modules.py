@@ -10,6 +10,7 @@ import h5py
 import os
 import subprocess
 import time
+from collections import Counter
 
 pi = np.pi
 mod = 1000000000000
@@ -26,6 +27,9 @@ c_ids = np.array(pd.read_csv(G3X_data+('ds_infor_G3X_progen/DS_G3X_snap_128_'
 
 plt.rc('font', family='serif', size=18)
 plt.rc('text', usetex=True)
+plt.rc('legend', fontsize=18, frameon=False, loc='upper right')
+plt.rc('axes', labelsize=20)
+plt.rc('lines', markersize=5.)
 
 def ld_arr(fname, sep='\s+', dtype='float'):
     return np.array(pd.read_csv(fname, sep=sep), dtype=dtype)
