@@ -3,7 +3,7 @@ from modules import *
 
 run_find_member_trees = False
 run_find_member_data = False
-run_find_boundness = True
+run_find_boundness = False
 
 
 out_dir = ('/run/media/ppxrh2/166AA4B87A2DD3B7/MergerTreeAHF/Infalling_Groups'
@@ -15,6 +15,8 @@ track_dir = ('/home/ppxrh2/Documents/test_pollux/TheThreeHundred/playground/'
 crange = np.array(np.loadtxt('/home/ppxrh2/Documents/test_pollux/TheThree'
         'Hundred/playground/rhaggar/G3X_data/G3X_300_selected_sample_257'
         '.txt'), dtype='int')
+cluster_ids = ld_arr('/home/ppxrh2/Documents/test_pollux/TheThreeHundred/'
+        'playground/rhaggar/G3X_data/G3X_300_host_ids.txt', dtype='int')
 crange = np.array(np.arange(1, 325), dtype='int')
 
 
@@ -56,6 +58,7 @@ def find_member_trees(c, outdir, grp_memb_dat):
     return None
 
 
+
 def find_member_data(c, outdir, datadir):
     """ Find position, velocity, etc. of haloes in groups """
 
@@ -68,7 +71,7 @@ def find_member_data(c, outdir, datadir):
     vx = h5py.File(datadir+'vx/CLUSTER_%04d_vx' % c, 'r')
     vy = h5py.File(datadir+'vy/CLUSTER_%04d_vy' % c, 'r')
     vz = h5py.File(datadir+'vz/CLUSTER_%04d_vz' % c, 'r')
-    #npars = h5py.File(datadir+'npars/CLUSTER_%04d_npars' % c, 'r')
+    npars = h5py.File(datadir+'npars/CLUSTER_%04d_npars' % c, 'r')
     ms = h5py.File(datadir+'ms/CLUSTER_%04d_ms' % c, 'r')
     mstars = h5py.File(datadir+'mstars/CLUSTER_%04d_mstars' % c, 'r')
     rvirs = h5py.File(datadir+'rvirs/CLUSTER_%04d_rvirs' % c, 'r')
@@ -79,7 +82,7 @@ def find_member_data(c, outdir, datadir):
     vx_g = h5py.File(outdir+'CLUSTER_%04d_member_vx.hdf5' % c, 'w')
     vy_g = h5py.File(outdir+'CLUSTER_%04d_member_vy.hdf5' % c, 'w')
     vz_g = h5py.File(outdir+'CLUSTER_%04d_member_vz.hdf5' % c, 'w')
-    #npars_g = h5py.File(outdir+'CLUSTER_%04d_member_npars.hdf5' % c, 'w')
+    npars_g = h5py.File(outdir+'CLUSTER_%04d_member_npars.hdf5' % c, 'w')
     ms_g = h5py.File(outdir+'CLUSTER_%04d_member_ms.hdf5' % c, 'w')
     mstars_g = h5py.File(outdir+'CLUSTER_%04d_member_mstars.hdf5' % c, 'w')
     r200s_g = h5py.File(outdir+'CLUSTER_%04d_member_r200s.hdf5' % c, 'w')
@@ -97,7 +100,7 @@ def find_member_data(c, outdir, datadir):
             xs_ij, ys_ij = np.zeros(n_sna), np.zeros(n_sna) 
             zs_ij, vx_ij = np.zeros(n_sna), np.zeros(n_sna)
             vy_ij, vz_ij = np.zeros(n_sna), np.zeros(n_sna)
-            #npars_ij = np.zeros(n_sna)
+            npars_ij = np.zeros(n_sna)
             ms_ij = np.zeros(n_sna)
             mstars_ij, r200s_ij = np.zeros(n_sna), np.zeros(n_sna)
             for k in range(n_sna):
@@ -107,7 +110,7 @@ def find_member_data(c, outdir, datadir):
                 vx_ij[k] = vx[snaps_ij[k]][hid_ij[k]]
                 vy_ij[k] = vy[snaps_ij[k]][hid_ij[k]]
                 vz_ij[k] = vz[snaps_ij[k]][hid_ij[k]]
-                #npars_ij[k] = npars[snaps_ij[k]][hid_ij[k]]
+                npars_ij[k] = npars[snaps_ij[k]][hid_ij[k]]
                 ms_ij[k] = ms[snaps_ij[k]][hid_ij[k]]
                 mstars_ij[k] = mstars[snaps_ij[k]][hid_ij[k]]
                 r200s_ij[k] = rvirs[snaps_ij[k]][hid_ij[k]]
@@ -117,12 +120,13 @@ def find_member_data(c, outdir, datadir):
             vx_g.create_dataset(keys[i]+'/'+keys_i[j], data=vx_ij)
             vy_g.create_dataset(keys[i]+'/'+keys_i[j], data=vy_ij)
             vz_g.create_dataset(keys[i]+'/'+keys_i[j], data=vz_ij)
-            #npars_g.create_dataset(keys[i]+'/'+keys_i[j], data=npars_ij)
+            npars_g.create_dataset(keys[i]+'/'+keys_i[j], data=npars_ij)
             ms_g.create_dataset(keys[i]+'/'+keys_i[j], data=ms_ij)
             mstars_g.create_dataset(keys[i]+'/'+keys_i[j], data=mstars_ij)
             r200s_g.create_dataset(keys[i]+'/'+keys_i[j], data=r200s_ij)
     
     return None
+
 
 
 def find_boundness(c, outdir):
@@ -218,6 +222,86 @@ def find_boundness(c, outdir):
     return None
 
 
+def find_pos_relative_group(c, outdir):
+    """ Study pericentres? """
+
+    if not os.path.exists(outdir+'position_wrt_group'):
+        os.mkdir(outdir+'position_wrt_group')
+
+    tracking_inf = ld_arr(track_dir+'forward_tracking.txt')
+    inf_clus = np.array(tracking_inf[:, 4], dtype='int')==c
+    inf_grou = np.char.mod('%15d', tracking_inf[:, 3])[inf_clus]
+    inf_memb = np.char.mod('%15d', tracking_inf[:, 2])[inf_clus]
+    cluster_snaps = cluster_ids[c-1]>0
+
+    bnd = h5py.File(outdir + 'CLUSTER_%04d_member_bounded.hdf5' % c, 'r')
+    ids = h5py.File(outdir + 'CLUSTER_%04d_member_branches.hdf5' % c, 'r')
+    xs = h5py.File(outdir + 'CLUSTER_%04d_member_xs.hdf5' % c, 'r')
+    ys = h5py.File(outdir + 'CLUSTER_%04d_member_ys.hdf5' % c, 'r')
+    zs = h5py.File(outdir + 'CLUSTER_%04d_member_zs.hdf5' % c, 'r')
+    r200s = h5py.File(outdir + 'CLUSTER_%04d_member_r200s.hdf5' % c, 'r')
+
+    hf_x = h5py.File(outdir+'position_wrt_group/CLUSTER_%04d_member_xs_group'
+            '.hdf5' % c, 'w')
+    hf_y = h5py.File(outdir+'position_wrt_group/CLUSTER_%04d_member_ys_group'
+        '.hdf5' % c, 'w')
+    hf_z = h5py.File(outdir+'position_wrt_group/CLUSTER_%04d_member_zs_group'
+            '.hdf5' % c, 'w')
+    hf_r2 = h5py.File(outdir+'position_wrt_group/CLUSTER_%04d_member_r200host'
+            '_group.hdf5' % c, 'w')
+
+    for i in range(len(inf_grou)):
+        ids_m = np.array(ids[inf_grou[i]][inf_memb[i]])//mod
+        ids_h = np.array(ids[inf_grou[i]]['              0'])//mod
+        
+        xyzs_memb_ld = np.transpose(np.array([xs[inf_grou[i]][inf_memb[i]], 
+                ys[inf_grou[i]][inf_memb[i]], zs[inf_grou[i]][inf_memb[i]]]))
+        xyzs_host_ld = np.transpose(np.array([
+                xs[inf_grou[i]]['              0'], 
+                ys[inf_grou[i]]['              0'], 
+                zs[inf_grou[i]]['              0'], 
+                r200s[inf_grou[i]]['              0']]))
+        
+        xyzs_memb = np.zeros((1+ids_h[-1]-ids_h[0], 3))
+        xyzs_host = np.zeros((1+ids_h[-1]-ids_h[0], 4))
+        
+        ids_m, ids_h = ids_m-ids_m[0], ids_h-ids_m[0]
+        ids_m_crop = ids_m < (ids_h[-1]+1)
+        xyzs_memb_ld = xyzs_memb_ld[ids_m_crop]
+
+        ids_m = ids_m[ids_m_crop]
+        ids_h_bool = np.zeros((len(xyzs_memb), 3)) > 1.
+        ids_h_bool[ids_h] = True
+        ids_m_bool = np.zeros((len(xyzs_memb), 4)) > 1.
+        ids_m_bool[ids_m] = True
+
+        xyzs_memb[ids_m] = xyzs_memb_ld
+        xyzs_host[ids_h] = xyzs_host_ld
+        
+        xyzs_memb *= ids_h_bool
+        xyzs_host *= ids_m_bool
+        
+        #position relative to host group centre
+        xyzs_memb_h = (xyzs_memb - xyzs_host[:, :3])
+        
+        hf_x.create_dataset(inf_grou[i]+'/'+inf_memb[i],data=xyzs_memb_h[:,0])
+        hf_y.create_dataset(inf_grou[i]+'/'+inf_memb[i],data=xyzs_memb_h[:,1])
+        hf_z.create_dataset(inf_grou[i]+'/'+inf_memb[i],data=xyzs_memb_h[:,2])
+        hf_r2.create_dataset(inf_grou[i]+'/'+inf_memb[i],data=xyzs_host[:,3])
+
+        #print(xyzs_memb_h[:, 0])
+        #print(xyzs_memb_h[:, 1])
+        #print(xyzs_memb_h[:, 2])
+
+    hf_x.close()
+    hf_y.close()
+    hf_z.close()
+    hf_r2.close()
+
+
+    return None
+
+
 def find_branch(id_a, id_list, keep_sing=False):
     id = id_a[-1]
     tree_search = np.where(id_list==id)[0]
@@ -267,4 +351,10 @@ if run_find_boundness==True:
         print(c_id)
         find_boundness(c_id, out_dir+'Group_member_tracking/CLUSTER_'
                 +'%04d/' % c_id)
+
+
+for c_id in crange:
+    print(c_id)
+    find_pos_relative_group(c_id, out_dir+'Group_member_tracking/'
+            'CLUSTER_%04d/' % c_id)
 
