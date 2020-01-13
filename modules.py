@@ -25,6 +25,9 @@ c_ids = np.array(pd.read_csv(G3X_data+('ds_infor_G3X_progen/DS_G3X_snap_128_'
         'center-cluster_progenitors.txt'), sep='\s+', usecols=['rID[0]']), 
         dtype='int')[:,0] - (128*mod+1)
 
+host_ids = np.array(pd.read_csv(G3X_data+'G3X_300_host_ids.txt', sep='\s+'),
+        dtype='int')
+
 plt.rc('font', family='serif', size=18)
 plt.rc('text', usetex=True)
 plt.rc('legend', fontsize=18, frameon=False, loc='upper right')
