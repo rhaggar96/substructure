@@ -179,7 +179,6 @@ def find_bound_groups(c, loaddir, datadir, outdir):
     vy = h5py.File(datadir + 'vy/CLUSTER_%04d_vy' % c, 'r')
     vz = h5py.File(datadir + 'vz/CLUSTER_%04d_vz' % c, 'r')
     ms = h5py.File(datadir + 'ms/CLUSTER_%04d_ms' % c, 'r')
-    mstars = h5py.File(datadir + 'mstars/CLUSTER_%04d_mstars' % c, 'r')
     r200s = h5py.File(datadir + 'rvirs/CLUSTER_%04d_rvirs' % c, 'r')
 
     print(alphabet)
