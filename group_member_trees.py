@@ -562,3 +562,22 @@ if run_tracking_wrt_cluster==True:
         print(c_id)
         find_pos_relative_cluster(c_id, out_dir+'Group_member_tracking/'
                 'CLUSTER_%04d/' % c_id, data_dir)
+
+
+
+
+
+
+
+
+data_load = h5py.File('/run/media/ppxrh2/166AA4B87A2DD3B7/MergerTreeAHF/Infalling_Groups/MergerTreeAHF_Infalling_Groups/Group_member_IDs/cluster_0001_members.hdf5', 'r')
+#data_load = h5py.File('/run/media/ppxrh2/166AA4B87A2DD3B7/MergerTreeAHF/Infalling_Groups/MergerTreeAHF_Infalling_Groups/Group_halo_IDs/cluster_0001_groups.hdf5', 'r')
+keys = np.array(list(data_load.keys()))
+#print(keys)
+
+for i in range(10):
+    print(keys[i])
+    print(np.array(data_load[keys[i]]))
+    #if len(np.array(data_load[keys[i]])) > 1:
+    #    print(np.array(data_load[keys[i]]))
+
