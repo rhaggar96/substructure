@@ -4,6 +4,7 @@ from modules import *
 
 run_infall_finder = False
 run_infaller_branches = False
+run_bounded_at_infall = False
 
 
 all_infalling_objects = ('/run/media/ppxrh2/166AA4B87A2DD3B7/MergerTreeAHF/'
@@ -142,14 +143,13 @@ def find_infaller_evolution(c, indir, outdir):
 
 
 
-
-
-
-
-
 def find_bound_groups(c, loaddir, datadir, outdir):
     """ Take the full list of all infalling objects (regardless of 
-    mass, etc.) and find which objects are bound to them at infall """
+    mass, etc.) and find which objects are bound to them at infall. 
+    Outputs lists labelled with an index, number of infalls of the 
+    host, and the number of members in the group (including the host). 
+    List begins with host ID, followed by IDs of any additional bound 
+    objects, infalling or not. No restictions on repeated objects. """
     
     infalls = h5py.File(loaddir + 'cluster_%04d_groups.hdf5' % c, 'r')
     keys = np.array(list(infalls.keys()), dtype='str')
@@ -167,11 +167,12 @@ def find_bound_groups(c, loaddir, datadir, outdir):
     
     infall_snaps = infall_ids_t // mod
     infall_ids = infall_ids_t - (infall_snaps*mod+1) #zero index
-    #snapshots at which objects infall, and number of objects at each
-    infall_snaps = np.array(list(Counter(infall_snaps).keys()))
+    #infall_snaps: snapshots at which objects infall
+    #infall_snaps_ct: number of objects at each snapshot
     infall_snaps_ct = np.array(list(Counter(infall_snaps).values()))
+    infall_snaps = np.array(list(Counter(infall_snaps).keys()))
 
-
+    #loading relevant data for finding boundness
     xs = h5py.File(datadir + 'xs/CLUSTER_%04d_xs' % c, 'r')
     ys = h5py.File(datadir + 'ys/CLUSTER_%04d_ys' % c, 'r')
     zs = h5py.File(datadir + 'zs/CLUSTER_%04d_zs' % c, 'r')
@@ -181,61 +182,39 @@ def find_bound_groups(c, loaddir, datadir, outdir):
     ms = h5py.File(datadir + 'ms/CLUSTER_%04d_ms' % c, 'r')
     r200s = h5py.File(datadir + 'rvirs/CLUSTER_%04d_rvirs' % c, 'r')
 
-    print(alphabet)
-
-    rs_out, vs_out = np.zeros(0), np.zeros(0) 
-    ids_out = np.array(np.zeros(0), dtype='int')
-    hosts_out = np.array(np.zeros(0), dtype='int')
     counter = 0
-    bound_out = h5py.File(outdir+'cluster_%04d_members.hdf5' % c, 'w')
+    #file to write lists of bound objects to
+    bound_out = h5py.File(outdir+'cluster_%04d_bound_members.hdf5' % c, 'w')
+    
+
     for s in range(len(infall_snaps)):
         snap = '%03d' % infall_snaps[s]
         xs_s, ys_s, zs_s, r200s_s = xs[snap], ys[snap], zs[snap], r200s[snap]
         vx_s, vy_s, vz_s = vx[snap], vy[snap], vz[snap]
         ms_s = np.array(ms[snap], dtype='int') 
-        mstars_s = np.array(mstars[snap], dtype='int')
-        ratio = (mstars_s+1) / ms_s
         ids_s = np.array(np.arange(len(xs_s)), dtype='int')
-
-        boolean = (ms_s >= m_lim) * (mstars_s >= ms_lim) * (ratio <= rat_lim)
-        xs_s, ys_s, zs_s = xs_s[boolean], ys_s[boolean], zs_s[boolean]
-        vx_s, vy_s, vz_s = vx_s[boolean], vy_s[boolean], vz_s[boolean]
-        ms_s, mstars_s = ms_s[boolean], mstars_s[boolean]
-        ids_s, r200s_s = ids_s[boolean], r200s_s[boolean]
         
         for i in range(infall_snaps_ct[s]):
             id_n = infall_ids[counter]
-            id_n = np.where(ids_s == id_n)[0][0]
+            #relative position and velocity of each halo wrt h
             rs_si = ((xs_s-xs_s[id_n])**2. + (ys_s-ys_s[id_n])**2.
                     + (zs_s-zs_s[id_n])**2.)**0.5
             vs_si = ((vx_s-vx_s[id_n])**2. + (vy_s-vy_s[id_n])**2.
                     + (vz_s-vz_s[id_n])**2.)**0.5
-            ms_si = (ms_s < ms_s[id_n])
-            ids_si, rs_si, vs_si = ids_s[ms_si], rs_si[ms_si], vs_si[ms_si]
-            boundres = bound(vs_si, rs_si, ms_s[id_n], r200s_s[id_n])
-            boundres_bool = boundres[0]
-            if len(np.where(ids_out==infall_ids_t[counter])[0]) > 0:
-                ids_bound = np.array(np.zeros(0), dtype='int')
-                boundres_bool = np.zeros(len(boundres_bool))<-1.
-            rs_out = np.append(rs_out, boundres[1][boundres_bool])
-            vs_out = np.append(vs_out, boundres[2][boundres_bool])
-            ids_bound = infall_snaps[s]*mod+1+ids_si[boundres_bool]
-            ids_out = np.append(ids_out, ids_bound)
-            hosts_out = np.append(hosts_out, np.array(
-                    [infall_ids_t[counter]]*len(ids_bound)))
-            bound_out.create_dataset('%16d_%03d' % (infall_ids_t[counter], 
-                    len(ids_bound)), data=ids_bound)
+
+            #everything bounded to main infaller
+            boundres = bound(vs_si, rs_si, ms_s[id_n], r200s_s[id_n])[0]
+
+            ids_bound = infall_snaps[s]*mod+1+ids_s[boundres]
+            #adding bound objects to infaller
+            ids_bound = np.append(np.array([infall_ids_t[counter]]), 
+                    ids_bound)
+
+            bound_out.create_dataset(keys[counter]+'_%03d' % len(ids_bound),        data=ids_bound)
             counter += 1
     bound_out.close()
     
-    return rs_out, vs_out, ids_out, hosts_out
-
-
-
-
-
-
-
+    return None
 
 
 
@@ -266,6 +245,21 @@ def find_branch(id_a, id_list, keep_sing=False):
     return result, final_state
 
 
+def bound(vrels, rrel, m, r200, incgroup=False):
+    """ Determine whether a list of haloes are bound to their host """
+    rrels = rrel
+    host = rrels<0.001
+    rrels[host] = 0.001
+    ke = 0.5 * (1000.*vrels)**2.
+    ge = ((1.3271244*10.**20.) * m) / (3.0857*10.**19.)
+    vir = (ke - (ge / rrels)) < (ge / (-2.5*r200))
+    v_cr = 0.001*(1.2*ge/r200)**0.5
+    if incgroup==False:
+        vir[host]=False
+    return vir, rrels/r200, vrels/v_cr
+
+
+
 
 if run_infall_finder==True:
     for i in range(1, 325):
@@ -279,6 +273,38 @@ if run_infaller_branches==True:
         find_infaller_evolution(i, all_infalling_objects, 
                 all_infalling_branches)
 
+if run_bounded_at_infall==True:
+    for i in range(1, 325):
+        print(i)
+        find_bound_groups(i, all_infalling_branches, halo_data, 
+                all_infalling_bounded)        
 
 
-find_bound_groups(1, all_infalling_branches, halo_data, all_infalling_bounded)
+
+hf = h5py.File(all_infalling_bounded + 'cluster_0001_bound_members.hdf5', 'r')
+
+keys = np.array(list(hf.keys()))
+keys_split = np.core.defchararray.partition(keys, '_')
+keys_split_s = np.core.defchararray.partition(keys_split[:, 2], '_')
+keys_split[:, 1] = keys_split_s[:, 0]
+keys_split[:, 2] = keys_split_s[:, 2]
+keys_split = np.array(keys_split, dtype='int')
+
+big_groups = np.where(keys_split[:, 2] > 50)[0]
+print(big_groups)
+print(keys_split[big_groups])
+n = 2
+snap=123
+grp_data = np.array(hf[keys[big_groups[n]]])
+
+#print(np.array(hf[keys[big_groups[0]]]))
+#print(np.array(hf[keys[big_groups[1]]]))
+#print(np.array(hf[keys[big_groups[2]]]))
+
+
+data = ld_arr('/run/media/ppxrh2/166AA4B87A2DD3B7/NewMDCLUSTER_data/NewMDCLUSTER/NewMDCLUSTER_0001/GadgetX-NewMDCLUSTER_0001.snap_123.z0.116.AHF_halos', dtype='float')
+print(data[0])
+
+plt.figure()
+plt.scatter(data[grp_data-(snap*mod+1), 2], data[grp_data-(snap*mod+1), 3], s=(10.**-4.5)*data[grp_data-(snap*mod+1), 0]**0.5)
+plt.show()
