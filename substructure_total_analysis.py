@@ -5,6 +5,7 @@ from modules import *
 run_infall_finder = False
 run_infaller_branches = False
 run_bounded_at_infall = False
+run_all_grp_member_branches = True
 
 
 all_infalling_objects = ('/run/media/ppxrh2/166AA4B87A2DD3B7/MergerTreeAHF/'
@@ -16,6 +17,9 @@ all_infalling_branches = ('/run/media/ppxrh2/166AA4B87A2DD3B7/MergerTreeAHF/'
 all_infalling_bounded = ('/run/media/ppxrh2/166AA4B87A2DD3B7/MergerTreeAHF/'
         + 'Infalling_Groups/MergerTreeAHF_Infalling_Re-written/all_bounded_at'
         + '_infall_ids/')
+all_grp_member_branches = ('/run/media/ppxrh2/166AA4B87A2DD3B7/MergerTreeAHF/'
+        + 'Infalling_Groups/MergerTreeAHF_Infalling_Re-written/all_group_'
+        + 'member_branches/')
 halo_data = ('/run/media/ppxrh2/166AA4B87A2DD3B7/NewMDCLUSTER_data/reduced_'
         + 'cluster_info/')
 
@@ -155,7 +159,7 @@ def find_bound_groups(c, loaddir, datadir, outdir):
     keys = np.array(list(infalls.keys()), dtype='str')
 
     if len(keys)>0:
-        #splt key strings at underscore, into two keys
+        #split key strings at underscore, into two keys
         n_infalls = np.array(np.core.defchararray.partition(keys, '_')[:, 2],
                 dtype='int') #infall number for each object
     else:
@@ -210,11 +214,52 @@ def find_bound_groups(c, loaddir, datadir, outdir):
             ids_bound = np.append(np.array([infall_ids_t[counter]]), 
                     ids_bound)
 
-            bound_out.create_dataset(keys[counter]+'_%03d' % len(ids_bound),        data=ids_bound)
+            bound_out.create_dataset(keys[counter]+'_%03d' % len(ids_bound), 
+                    data=ids_bound)
             counter += 1
     bound_out.close()
     
     return None
+
+
+
+def find_member_trees(c, loaddir, mainbranchdir, outdir):
+    """ Finds the full branches of each bound member of an infalling 
+    group """
+
+    group_objs = h5py.File(loaddir+'cluster_%04d_bound_members.hdf5' % c, 'r')
+    infaller_branch = h5py.File(mainbranchdir+'cluster_%04d_groups.hdf5' % c,
+            'r')
+    
+    total_tree = np.array(pd.read_csv('/run/media/ppxrh2/166AA4B87A2DD3B7/'
+            'MergerTreeAHF/MergerTreeAHF_ASCII/MergerTree_GadgetX-NewMD'
+            'CLUSTER_%04d.txt-CRMratio2' % c, sep='\s+', skiprows=2, 
+            usecols=[0], dtype='str')[:-1], dtype='int')[:, 0]
+
+    keys_init = np.array(list(group_objs.keys()))
+    keys = np.core.defchararray.partition(keys_init, '_')
+    keys[:, [1,2]] = np.core.defchararray.partition(keys[:, 2], '_')[:, [0,2]]
+
+    hf = h5py.File(outdir + 'CLUSTER_%04d_grp_memb_branches.hdf5' % c, 'w')
+    for i in range(len(keys_init)):
+        hf.create_dataset(keys_init[i] + '/000', data=infaller_branch[keys[
+                i,0]+'_'+keys[i,1]])
+        if keys[i, 2] != '001':
+            for j in range(1, int(keys[i, 2])):
+                grp_memb_id = np.array(list(group_objs[keys_init[i]]))[j]
+                memb_branch = find_branch(np.array([grp_memb_id]), 
+                        total_tree, True)[0]
+                hf.create_dataset(keys_init[i] + '/%03d' % j, data=memb_branch)
+
+    hf.close()
+
+    return None
+
+
+
+
+
+
 
 
 
@@ -262,49 +307,25 @@ def bound(vrels, rrel, m, r200, incgroup=False):
 
 
 if run_infall_finder==True:
-    for i in range(1, 325):
-        print(i)
-        find_infalling(i, all_infalling_objects)
+    for clus_no in range(1, 325):
+        print(clus_no)
+        find_infalling(clus_no, all_infalling_objects)
 
 
 if run_infaller_branches==True:
-    for i in range(1, 325):
-        print(i)
-        find_infaller_evolution(i, all_infalling_objects, 
+    for clus_no in range(1, 325):
+        print(clus_no)
+        find_infaller_evolution(clus_no, all_infalling_objects, 
                 all_infalling_branches)
 
 if run_bounded_at_infall==True:
-    for i in range(1, 325):
-        print(i)
-        find_bound_groups(i, all_infalling_branches, halo_data, 
+    for clus_no in range(1, 325):
+        print(clus_no)
+        find_bound_groups(clus_no, all_infalling_branches, halo_data, 
                 all_infalling_bounded)        
 
-
-
-hf = h5py.File(all_infalling_bounded + 'cluster_0001_bound_members.hdf5', 'r')
-
-keys = np.array(list(hf.keys()))
-keys_split = np.core.defchararray.partition(keys, '_')
-keys_split_s = np.core.defchararray.partition(keys_split[:, 2], '_')
-keys_split[:, 1] = keys_split_s[:, 0]
-keys_split[:, 2] = keys_split_s[:, 2]
-keys_split = np.array(keys_split, dtype='int')
-
-big_groups = np.where(keys_split[:, 2] > 50)[0]
-print(big_groups)
-print(keys_split[big_groups])
-n = 2
-snap=123
-grp_data = np.array(hf[keys[big_groups[n]]])
-
-#print(np.array(hf[keys[big_groups[0]]]))
-#print(np.array(hf[keys[big_groups[1]]]))
-#print(np.array(hf[keys[big_groups[2]]]))
-
-
-data = ld_arr('/run/media/ppxrh2/166AA4B87A2DD3B7/NewMDCLUSTER_data/NewMDCLUSTER/NewMDCLUSTER_0001/GadgetX-NewMDCLUSTER_0001.snap_123.z0.116.AHF_halos', dtype='float')
-print(data[0])
-
-plt.figure()
-plt.scatter(data[grp_data-(snap*mod+1), 2], data[grp_data-(snap*mod+1), 3], s=(10.**-4.5)*data[grp_data-(snap*mod+1), 0]**0.5)
-plt.show()
+if run_all_grp_member_branches==True:
+    for clus_no in range(1, 325):
+        print(clus_no)
+        find_member_trees(clus_no, all_infalling_bounded,
+                all_infalling_branches, all_grp_member_branches)
