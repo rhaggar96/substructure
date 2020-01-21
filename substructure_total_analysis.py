@@ -2,9 +2,9 @@ from modules import *
 
 
 
-run_infall_finder = False
-run_infaller_branches = False
-run_bounded_at_infall = False
+run_infall_finder = True
+run_infaller_branches = True
+run_bounded_at_infall = True
 run_all_grp_member_branches = True
 
 
@@ -127,18 +127,21 @@ def find_infaller_evolution(c, indir, outdir):
     ids_infall_t = ld_arr(indir + '/CLUSTER_%04d_all_infallers.txt' % c, 
             dtype='int')[:, 0]
 
-    hf = h5py.File(outdir + 'cluster_%04d_groups.hdf5' % c, 'w')
+    hf = h5py.File(outdir + 'CLUSTER_%04d_groups.hdf5' % c, 'w')
     infall_number = np.array(np.ones(len(ids_infall_t)), dtype='int')
     i_nonrep = 0
     for i in range(len(ids_infall_t)):
-        branch = find_branch(np.array([ids_infall_t[i]]),total_tree)[0]
+        branch = find_branch(np.array([ids_infall_t[i]]),total_tree)
+        fate = branch[1]
+        branch = branch[0]
         for j in branch[1:]:
             repeat = np.where(ids_infall_t == j)[0]
             if len(repeat) == 1:
                 infall_number[repeat] = infall_number[i] + 1
         if len(branch) > 0:
-            #label dataset with index, and number of infalls
-            hf.create_dataset('%04d_%02d' % (i_nonrep, infall_number[i]), data=branch)
+            #label dataset with index, final state amd number of infalls
+            hf.create_dataset('%04d_%01d_%02d' % (i_nonrep, fate, 
+                    infall_number[i]), data=branch)
             i_nonrep += 1
     
     hf.close()
@@ -155,16 +158,9 @@ def find_bound_groups(c, loaddir, datadir, outdir):
     List begins with host ID, followed by IDs of any additional bound 
     objects, infalling or not. No restictions on repeated objects. """
     
-    infalls = h5py.File(loaddir + 'cluster_%04d_groups.hdf5' % c, 'r')
+    infalls = h5py.File(loaddir + 'CLUSTER_%04d_groups.hdf5' % c, 'r')
     keys = np.array(list(infalls.keys()), dtype='str')
 
-    if len(keys)>0:
-        #split key strings at underscore, into two keys
-        n_infalls = np.array(np.core.defchararray.partition(keys, '_')[:, 2],
-                dtype='int') #infall number for each object
-    else:
-        n_infalls = np.zeros(0)
-    
     #ids of everything infalling
     infall_ids_t = np.array([np.array(infalls[keys[i]], dtype='int')[0] 
             for i in np.arange(len(keys))])
@@ -188,7 +184,7 @@ def find_bound_groups(c, loaddir, datadir, outdir):
 
     counter = 0
     #file to write lists of bound objects to
-    bound_out = h5py.File(outdir+'cluster_%04d_bound_members.hdf5' % c, 'w')
+    bound_out = h5py.File(outdir+'CLUSTER_%04d_bound_members.hdf5' % c, 'w')
     
 
     for s in range(len(infall_snaps)):
@@ -227,8 +223,8 @@ def find_member_trees(c, loaddir, mainbranchdir, outdir):
     """ Finds the full branches of each bound member of an infalling 
     group """
 
-    group_objs = h5py.File(loaddir+'cluster_%04d_bound_members.hdf5' % c, 'r')
-    infaller_branch = h5py.File(mainbranchdir+'cluster_%04d_groups.hdf5' % c,
+    group_objs = h5py.File(loaddir+'CLUSTER_%04d_bound_members.hdf5' % c, 'r')
+    infaller_branch = h5py.File(mainbranchdir+'CLUSTER_%04d_groups.hdf5' % c,
             'r')
     
     total_tree = np.array(pd.read_csv('/run/media/ppxrh2/166AA4B87A2DD3B7/'
@@ -236,34 +232,36 @@ def find_member_trees(c, loaddir, mainbranchdir, outdir):
             'CLUSTER_%04d.txt-CRMratio2' % c, sep='\s+', skiprows=2, 
             usecols=[0], dtype='str')[:-1], dtype='int')[:, 0]
 
-    #keys including id, infall no, no of members
+    #keys including id, fate, infall no, no of members
     keys_init = np.array(list(group_objs.keys()))
     if len(keys_init) > 0:
-        keys = np.core.defchararray.partition(keys_init, '_')
-        keys[:, [1,2]] = np.core.defchararray.partition(
-                keys[:, 2], '_')[:, [0, 2]]
+        keys = np.array(np.zeros((len(keys_init), 4)), dtype='str')
+        keys[:, [0,1,2]] = np.core.defchararray.partition(keys_init, '_')
+        keys[:, [1,2,3]] = np.core.defchararray.partition(
+                keys[:, 2], '_')
+        keys[:, [2,3]] = np.core.defchararray.partition(
+                keys[:, 3], '_')[:, [0, 2]]
 
     hf = h5py.File(outdir + 'CLUSTER_%04d_grp_memb_branches.hdf5' % c, 'w')
     for i in range(len(keys_init)):
         #first, save branch of host object
-        hf.create_dataset(keys_init[i] + '/000', data=infaller_branch[keys[
-                i,0]+'_'+keys[i,1]])
-        if keys[i, 2] != '001':
-            for j in range(1, int(keys[i, 2])):
+        hf.create_dataset(keys_init[i] + '/000_' + keys[i,1], 
+                data=infaller_branch[keys[i,0]+'_'+keys[i,1]+'_'+keys[i,2]])
+        if keys[i, 3] != '001':
+            for j in range(1, int(keys[i, 3])):
                 #for each member, find branch and save
                 grp_memb_id = np.array(list(group_objs[keys_init[i]]))[j]
                 memb_branch = find_branch(np.array([grp_memb_id]), 
-                        total_tree, True)[0]
+                        total_tree, True)
+                memb_fate = memb_branch[1]
+                memb_branch = memb_branch[0]
                 #save in sub-directory, with id number for each member
-                hf.create_dataset(keys_init[i] + '/%03d' % j, data=memb_branch)
+                hf.create_dataset(keys_init[i] + '/%03d_%01d' % (j, memb_fate),
+                        data=memb_branch)
 
     hf.close()
 
     return None
-
-
-
-
 
 
 
@@ -278,6 +276,7 @@ def find_branch(id_a, id_list, keep_sing=False):
     id """
     id = id_a[-1]
     tree_search = np.where(id_list==id)[0]
+    final_state = 0 #survives to z=0
     if len(tree_search)==0:
         result = np.array([id]*keep_sing, dtype='int')
         final_state = 1 #no progenitor - should not be the case for these
@@ -290,8 +289,7 @@ def find_branch(id_a, id_list, keep_sing=False):
         final_state = 1 #lost by halo finder
     else:
         id_a = np.append(id_a, id_list[tree_search[0]-1])
-        result = find_branch(id_a, id_list)[0]
-        final_state = 0 #survives to z=0
+        result, final_state = find_branch(id_a, id_list)
     
     return result, final_state
 
@@ -311,27 +309,33 @@ def bound(vrels, rrel, m, r200, incgroup=False):
 
 
 
+crange = range(1, 325)
 
 if run_infall_finder==True:
-    for clus_no in range(1, 325):
+    print('run_infall_finder')
+    for clus_no in crange:
         print(clus_no)
         find_infalling(clus_no, all_infalling_objects)
 
 
 if run_infaller_branches==True:
-    for clus_no in range(1, 325):
+    print('run_infaller_branches')
+    for clus_no in crange:
         print(clus_no)
         find_infaller_evolution(clus_no, all_infalling_objects, 
                 all_infalling_branches)
 
 if run_bounded_at_infall==True:
-    for clus_no in range(1, 325):
+    print('run_bounded_at_infall')
+    for clus_no in crange:
         print(clus_no)
         find_bound_groups(clus_no, all_infalling_branches, halo_data, 
                 all_infalling_bounded)        
 
 if run_all_grp_member_branches==True:
-    for clus_no in range(1, 325):
+    print('run_all_grp_member_branches')
+    for clus_no in crange:
         print(clus_no)
         find_member_trees(clus_no, all_infalling_bounded,
                 all_infalling_branches, all_grp_member_branches)
+
