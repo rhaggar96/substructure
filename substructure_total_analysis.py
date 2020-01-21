@@ -236,19 +236,25 @@ def find_member_trees(c, loaddir, mainbranchdir, outdir):
             'CLUSTER_%04d.txt-CRMratio2' % c, sep='\s+', skiprows=2, 
             usecols=[0], dtype='str')[:-1], dtype='int')[:, 0]
 
+    #keys including id, infall no, no of members
     keys_init = np.array(list(group_objs.keys()))
-    keys = np.core.defchararray.partition(keys_init, '_')
-    keys[:, [1,2]] = np.core.defchararray.partition(keys[:, 2], '_')[:, [0,2]]
+    if len(keys_init) > 0:
+        keys = np.core.defchararray.partition(keys_init, '_')
+        keys[:, [1,2]] = np.core.defchararray.partition(
+                keys[:, 2], '_')[:, [0, 2]]
 
     hf = h5py.File(outdir + 'CLUSTER_%04d_grp_memb_branches.hdf5' % c, 'w')
     for i in range(len(keys_init)):
+        #first, save branch of host object
         hf.create_dataset(keys_init[i] + '/000', data=infaller_branch[keys[
                 i,0]+'_'+keys[i,1]])
         if keys[i, 2] != '001':
             for j in range(1, int(keys[i, 2])):
+                #for each member, find branch and save
                 grp_memb_id = np.array(list(group_objs[keys_init[i]]))[j]
                 memb_branch = find_branch(np.array([grp_memb_id]), 
                         total_tree, True)[0]
+                #save in sub-directory, with id number for each member
                 hf.create_dataset(keys_init[i] + '/%03d' % j, data=memb_branch)
 
     hf.close()
@@ -271,7 +277,6 @@ def find_branch(id_a, id_list, keep_sing=False):
     """ Finds the full evolution of a halo, starting with the earliest 
     id """
     id = id_a[-1]
-    final_state = 0
     tree_search = np.where(id_list==id)[0]
     if len(tree_search)==0:
         result = np.array([id]*keep_sing, dtype='int')
@@ -280,12 +285,13 @@ def find_branch(id_a, id_list, keep_sing=False):
     elif id//mod == id_list[tree_search[0]-1]//mod:
         result = id_a
         final_state = 2 #absorbed by a larger halo - not main progenitor
-    elif len(tree_search)==1:
+    elif len(tree_search)==1 and id//mod > id_list[tree_search[0]+1]//mod:
         result = id_a
         final_state = 1 #lost by halo finder
     else:
         id_a = np.append(id_a, id_list[tree_search[0]-1])
         result = find_branch(id_a, id_list)[0]
+        final_state = 0 #survives to z=0
     
     return result, final_state
 
