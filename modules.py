@@ -10,6 +10,7 @@ import h5py
 import os
 import subprocess
 import time
+import copy
 from collections import Counter
 
 pi = np.pi
@@ -25,8 +26,17 @@ c_ids = np.array(pd.read_csv(G3X_data+('ds_infor_G3X_progen/DS_G3X_snap_128_'
         'center-cluster_progenitors.txt'), sep='\s+', usecols=['rID[0]']), 
         dtype='int')[:,0] - (128*mod+1)
 
+host_ids = np.array(pd.read_csv(G3X_data+'G3X_300_host_ids.txt', sep='\s+'),
+        dtype='int')
+
+#COLOR = '97CBFF'
+#plt.rcParams['text.color'] = COLOR
+#plt.rcParams['axes.labelcolor'] = COLOR
+#plt.rcParams['xtick.color'] = COLOR
+#plt.rcParams['ytick.color'] = COLOR
+#plt.rc('font', family='sans-serif', size=18)
 plt.rc('font', family='serif', size=18)
-plt.rc('text', usetex=True)
+#plt.rc('text', usetex=True)
 plt.rc('legend', fontsize=18, frameon=False, loc='upper right')
 plt.rc('axes', labelsize=20)
 plt.rc('lines', markersize=5.)
@@ -34,7 +44,7 @@ plt.rc('lines', markersize=5.)
 def ld_arr(fname, sep='\s+', dtype='float'):
     return np.array(pd.read_csv(fname, sep=sep), dtype=dtype)
 
-def find_stdev(array):
+def find_stdev(array, excl=0.317310508):
     """ Find median, and 1 sigma error bars on a dataset """
     array = np.sort(array)
     length = float(len(array))
@@ -42,7 +52,7 @@ def find_stdev(array):
         return np.median(array), 0., 0.
     
     stdevs = 1.#2.#
-    excl = 0.317310508#0.045500264#0.317310508#
+    #excl = #0.045500264#0.317310508#
     low_b_f = ((excl/2.) * length) - 0.5
     high_b_f = ((1. - (excl/2.)) * length) - 0.5
     low_b, high_b = int(low_b_f), int(high_b_f)
@@ -51,8 +61,12 @@ def find_stdev(array):
     val_dn = (array[low_b] * (1. + (float(low_b) - low_b_f))) + (
             array[low_b+1] * (low_b_f - float(low_b)))
     err_dn = (median - val_dn) / stdevs
-    val_up = (array[high_b] * (1. + (float(high_b) - high_b_f))) + (
-            array[high_b+1] * (high_b_f - float(high_b)))
+    if len(array)>high_b+1:
+        val_up = (array[high_b] * (1. + (float(high_b) - high_b_f))) + (
+                array[high_b+1] * (high_b_f - float(high_b)))
+    else:
+        val_up = (array[high_b] * (1. + (float(high_b) - high_b_f))) + (
+                array[high_b] * (high_b_f - float(high_b)))
     err_up = (val_up - median) / stdevs
 
     return median, err_up, err_dn
