@@ -2,9 +2,8 @@ from modules import *
 
 
 
+#"""
 
-
-"""
 hx = h5py.File('selected_infaller_xs.hdf5', 'w')
 hy = h5py.File('selected_infaller_ys.hdf5', 'w')
 hz = h5py.File('selected_infaller_zs.hdf5', 'w')
@@ -12,8 +11,13 @@ hz = h5py.File('selected_infaller_zs.hdf5', 'w')
 #hvy = h5py.File('selected_infaller_vy.hdf5', 'w')
 #hvz = h5py.File('selected_infaller_vz.hdf5', 'w')
 hr = h5py.File('selected_infaller_rs.hdf5', 'w')
+
 crange = np.array(np.loadtxt('/home/ppxrh2/Documents/test_pollux/TheThreeHundred/playground/rhaggar/G3X_data/G3X_300_selected_sample_257.txt'), dtype='int')
+all_relative_clus_data = ('/run/media/ppxrh2/166AA4B87A2DD3B7/MergerTreeAHF/'
+        + 'Infalling_Groups/MergerTreeAHF_Infalling_Re-written/'
+        + 'all_members_halo_data/rel_to_cluster/')
 counter = 0
+
 for c_no in crange:
     print(c_no)
 
@@ -28,8 +32,10 @@ for c_no in crange:
 
     keys = np.array(list(data_xs.keys()))
     keys_l = []
+    lowsizelim = 1 #non-inclusive
+    highsizelim = 10 #non-inclusive
     for i in range(len(keys)):
-        if len(list(data_xs[keys[i]].keys())) > 1:
+        if len(list(data_xs[keys[i]].keys())) > lowsizelim:
             keys_l += [keys[i]]
     keys_l = np.array(keys_l)
 
@@ -53,12 +59,26 @@ for c_no in crange:
         theta = np.arctan2(Y, X)
         phi = np.arccos(Z/R)
 
-        M = np.array(data_ms_n[keys[0]])[0]
-        MS = np.array(data_mstar_n[keys[0]])[0]
+        #############testing to see if enough satellites satisfy mass criteria
+        M, MS = [], []
+        for k in range(len(keys)):
+            M += [int(np.array(data_ms_n[keys[k]])[0])]
+            MS += [int(np.array(data_mstar_n[keys[k]])[0])]
+        M, MS = np.array(M), np.array(MS)
         RAT = MS/M
         mass_bool = (M > 10.**10.5) * (MS > 10.**9.5) * (RAT < 0.3)
-        if mass_bool==False:
+        if np.sum(mass_bool) <= lowsizelim or np.sum(mass_bool) >= highsizelim:
             keys = np.zeros(0)
+        #############
+        
+        if len(keys)>0:
+            M = np.array(data_ms_n[keys[0]])[0]
+            MS = np.array(data_mstar_n[keys[0]])[0]
+            RAT = MS/M
+            mass_bool = (M > 10.**10.5) * (MS > 10.**9.5) * (RAT < 0.3)
+            if mass_bool==False:
+                keys = np.zeros(0)
+        
 
         for j in range(len(keys)):
             xs = np.array(data_xs_n[keys[j]])
@@ -118,13 +138,13 @@ for c_no in crange:
             xs_n, ys_n, zs_n = xs_n[mass_bool], ys_n[mass_bool], zs_n[mass_bool]
             rs_n = (ys_n**2. + zs_n**2.)**0.5
             rs_n[ys_n<0.] = -1.*rs_n[ys_n<0.]
-            #if j==0:
-            #    flip_dir = 1. #1 for keep, -1 for reverse direction
-            #    if len(ys_n)>1:
-            #        if ys_n[0] > ys_n[1]:
-            #        #if vy_n[0] < 0.:
-            #            flip_dir = -1.
-            #rs_n *= flip_dir
+            if j==0:
+                flip_dir = 1. #1 for keep, -1 for reverse direction
+                if len(ys_n)>1:
+                    if ys_n[0] > ys_n[1]:
+                    #if vy_n[0] < 0.:
+                        flip_dir = -1.
+            rs_n *= flip_dir
 
 
             if len(xs_n) > 1:
@@ -138,7 +158,7 @@ hx.close()
 hy.close()
 hz.close()
 hr.close()
-"""
+#"""
 
 
 
@@ -248,12 +268,15 @@ plt.plot([-1.4, -1.2], [0., 0.], linewidth=5., c='r', zorder=1000000)
 plt.imshow(xhist, extent=(-1.5, 2., -1.5, 1.5), origin='lower', cmap='viridis')
 Y, X = np.meshgrid(xbins[:-1], ybins[:-1])
 plt.xlabel(r'$x/R_{200}$')
+plt.xlabel('hiiiiiiiiiiii roan')
 plt.ylabel(r'$y/R_{200}$')
+plt.xticks((np.arange(8)-3)*0.5)
+plt.yticks((np.arange(7)-3)*0.5)
 plt.tight_layout()
 #plt.savefig('hist2d_rs_poster.png', dpi=600, facecolor='#333333')
-#plt.savefig('hist2d_rs.png', dpi=400)
+plt.savefig('hist2d_2-9.png', dpi=400)
 
-plt.show()
+#plt.show()
 
 
 hx.close()
