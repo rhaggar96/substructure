@@ -43,22 +43,17 @@ def find_infalling(c, outdir, loaddir):
             + 'CLUSTER_%04d.txt') % (c, c), dtype='int')
     halo_ids_c = halo_ids[c_ids[c-1]]
     halo_ids_c = halo_ids_c[halo_ids_c > 0]
-    keys = np.char.mod(u'%03d', halo_ids // mod)
+    keys = np.char.mod(u'%03d', halo_ids_c // mod)
 
 
     j = keys[0]
-    print(keys)
-    print(j)
-    #print(xs_in)
-    #print(np.array(xs_in['128']))
-    #print(np.array(xs_in[j]))
     xs = np.array(xs_in[j])
     ys = np.array(ys_in[j])
     zs = np.array(zs_in[j])
     ids = np.array(np.arange(len(xs)), dtype='int')+int(j)*mod+1
     r200s = np.array(r200_in[j])
     
-    h_id = halo_ids[0] - (int(j)*mod+1)
+    h_id = halo_ids_c[0] - (int(j)*mod+1)
     clust = [xs[h_id], ys[h_id], zs[h_id], r200s[h_id]]
         
     #ids_out: id of every object outside the cluster in the first snapshot
@@ -84,7 +79,7 @@ def find_infalling(c, outdir, loaddir):
         ids_main_p = np.array(np.zeros(len(xs)), dtype='int')
         ids_main_p[ids_main_p_in[:, 0]-(j*mod+1)] = ids_main_p_in[:, 1]
         
-        h_id = halo_ids[i] - (int(j)*mod+1)
+        h_id = halo_ids_c[i] - (int(j)*mod+1)
         clust = [xs[h_id], ys[h_id], zs[h_id], r200s[h_id]]
 
         xs, ys, zs = xs-clust[0], ys-clust[1], zs-clust[2]

@@ -1,10 +1,12 @@
 from modules import *
 
 
-inputdir_all = ('/run/media/ppxrh2/166AA4B87A2DD3B7/NewMDCLUSTER_data/'
+inputdir_all = ('/run/media/ppxrh2/166AA4B87A2DD3B7/MergerTreeAHF/'
+        + 'Infalling_Groups/MergerTreeAHF_Infalling_Re-written/'
         + 'NewMDCLUSTER_0002_reruns/NewMDCLUSTER_%04d/')
-outputdir = ('/run/media/ppxrh2/166AA4B87A2DD3B7/NewMDCLUSTER_data/'
-        + 'NewMDCLUSTER_0002_reruns/reduced_cluster_info/')
+outputdir = ('/run/media/ppxrh2/166AA4B87A2DD3B7/MergerTreeAHF/Infalling_'
+        + 'Groups/MergerTreeAHF_Infalling_Re-written/NewMDCLUSTER_0002_reruns/'
+        + 'reduced_cluster_info/')
 
 
 
@@ -20,7 +22,7 @@ def get_ahf_h_fname(dir, snap_inq):
     return fname
 
 def extract_halo_positions(c_no, suffs=['subs', 'ms', 'npars', 'xs', 'ys', 
-        'zs', 'vx', 'vy', 'vz', 'rvirs', 'mgas', 'mstars']):
+        'zs', 'vx', 'vy', 'vz', 'r200', 'mgas', 'mstars']):
     """ Take halo catalogues, and extract positions, virial radii, 
     masses and subhalo status to separate files """
     
@@ -43,7 +45,6 @@ def extract_halo_positions(c_no, suffs=['subs', 'ms', 'npars', 'xs', 'ys',
     flo_rng = range(3, 10)
 
     for i in range(129):
-        print(i)
         if (c_no==10 and i==100) or (c_no==228 and i==110):
             data_in = np.zeros(0)
             
