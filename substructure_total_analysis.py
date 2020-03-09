@@ -7,7 +7,8 @@ run_bounded_at_infall = False
 run_all_grp_member_branches = False
 run_all_memb_data = False
 run_find_cluster_data = False
-run_all_memb_data_rel_clus = True
+run_all_memb_data_rel_clus = False
+run_all_memb_data_rel_grp = False
 
 
 #base_folder = ('/run/media/ppxrh2/166AA4B87A2DD3B7/MergerTreeAHF/'
@@ -37,6 +38,7 @@ all_infalling_bounded = base_folder + 'all_bounded_at_infall_ids/'
 all_grp_member_branches = base_folder + 'all_group_member_branches/'
 all_grp_member_data = base_folder + 'all_members_halo_data/'
 all_relative_clus_data = base_folder + 'all_members_halo_data/'
+all_relative_grp_data = base_folder + 'all_members_halo_data/'
 
 halo_data = (base_folder + 'reduced_cluster_info/')
 cluster_halo_data = (base_folder + 'cluster_halo_data/')
@@ -464,7 +466,7 @@ def find_clust_relative_positions(c, loaddir, membids, cdatadir, outdir):
         os.mkdir(outdir)
 
     make_files_in_dir(outdir, 
-            ['xs','ys','zs','vx','vy','vz','ms','mstars','mgas','r200'])
+            ['id','xs','ys','zs','vx','vy','vz','ms','mstars','mgas','r200'])
 
     clus_idin = h5py.File(cdatadir + 'ALL_CLUSTER_host_id.hdf5', 'r')['%04d'%c]
     clus_xsin = h5py.File(cdatadir + 'ALL_CLUSTER_host_xs.hdf5', 'r')['%04d'%c]
@@ -508,6 +510,7 @@ def find_clust_relative_positions(c, loaddir, membids, cdatadir, outdir):
     keys = np.array(list(halo_id.keys()))
 
 
+    hf_id = h5py.File(outdir + 'id/CLUSTER_%04d_id_reltoCLUS.hdf5'%c, 'w')
     hf_xs = h5py.File(outdir + 'xs/CLUSTER_%04d_xs_reltoCLUS.hdf5'%c, 'w')
     hf_ys = h5py.File(outdir + 'ys/CLUSTER_%04d_ys_reltoCLUS.hdf5'%c, 'w')
     hf_zs = h5py.File(outdir + 'zs/CLUSTER_%04d_zs_reltoCLUS.hdf5'%c, 'w')
@@ -532,8 +535,11 @@ def find_clust_relative_positions(c, loaddir, membids, cdatadir, outdir):
             hal_xs, hal_ys = np.zeros(129), np.zeros(129)
             hal_zs, hal_vx = np.zeros(129), np.zeros(129)
             hal_vy, hal_vz = np.zeros(129), np.zeros(129)
-            hal_ms, hal_r2 = np.zeros(129), np.zeros(129)
-            hal_mstar, hal_mgas = np.zeros(129), np.zeros(129)
+            hal_r2 = np.zeros(129)
+            hal_ms = np.array(np.zeros(129), dtype='int')
+            hal_mstar = np.array(np.zeros(129), dtype='int')
+            hal_mgas = np.array(np.zeros(129), dtype='int')
+            hal_ids = np.array(np.zeros(129), dtype='int')
             
             hal_xs[snap_ids] = np.array(halo_xs[key_tot])
             hal_ys[snap_ids] = np.array(halo_ys[key_tot])
@@ -545,12 +551,13 @@ def find_clust_relative_positions(c, loaddir, membids, cdatadir, outdir):
             hal_mstar[snap_ids] = np.array(halo_mstar[key_tot])
             hal_mgas[snap_ids] = np.array(halo_mgas[key_tot])
             hal_r2[snap_ids] = np.array(halo_r2[key_tot])
+            hal_ids[snap_ids] = ids
             
             boo = np.where((hal_xs > 0.) * (clus_xs > 0.))[0]
             hal_xs, hal_ys, hal_zs = hal_xs[boo], hal_ys[boo], hal_zs[boo]
             hal_vx, hal_vy, hal_vz = hal_vx[boo], hal_vy[boo], hal_vz[boo]
             hal_ms, hal_mstar, hal_r2 = hal_ms[boo],hal_mstar[boo],hal_r2[boo]
-            hal_mgas = hal_mgas[boo]
+            hal_mgas, ids = hal_mgas[boo], hal_ids[boo]
             clu_xs, clu_ys = clus_xs[boo], clus_ys[boo]
             clu_zs, clu_r2 = clus_zs[boo], clus_r2[boo]
             clu_vx, clu_vy = clus_vx[boo], clus_vy[boo]
@@ -573,6 +580,7 @@ def find_clust_relative_positions(c, loaddir, membids, cdatadir, outdir):
             hf_mstar.create_dataset(key_tot, data=hal_mstar)
             hf_mgas.create_dataset(key_tot, data=hal_mgas)
             hf_r2.create_dataset(key_tot, data=hal_r2)
+            hf_id.create_dataset(key_tot, data=ids)
 
 
     hf_xs.close()
@@ -585,50 +593,31 @@ def find_clust_relative_positions(c, loaddir, membids, cdatadir, outdir):
     hf_mstar.close()
     hf_mgas.close()
     hf_r2.close()
+    hf_id.close()
 
 
     return None
 
 
-'''
+
 def find_grp_relative_positions(c, loaddir, membids, cdatadir, outdir):
     """ Find the position, velocity of all infalling objects, relative 
     to their host group, and their masses at the applicable snapshots """
 
-################################################BELOW NOT EDITED######
     loaddir += 'absolute/'
     if not os.path.exists(outdir):
         os.mkdir(outdir)
-    outdir += 'rel_to_cluster/'
+    outdir += 'rel_to_grp/'
     if not os.path.exists(outdir):
         os.mkdir(outdir)
 
     make_files_in_dir(outdir, 
-            ['xs','ys','zs','vx','vy','vz','ms','mstars','mgas','r200'])
+            ['id','xs','ys','zs','vx','vy','vz','ms','mstars','mgas','r200'])
 
     clus_idin = h5py.File(cdatadir + 'ALL_CLUSTER_host_id.hdf5', 'r')['%04d'%c]
-    clus_xsin = h5py.File(cdatadir + 'ALL_CLUSTER_host_xs.hdf5', 'r')['%04d'%c]
-    clus_ysin = h5py.File(cdatadir + 'ALL_CLUSTER_host_ys.hdf5', 'r')['%04d'%c]
-    clus_zsin = h5py.File(cdatadir + 'ALL_CLUSTER_host_zs.hdf5', 'r')['%04d'%c]
-    clus_r2in = h5py.File(cdatadir+'ALL_CLUSTER_host_r200.hdf5', 'r')['%04d'%c]
-    clus_vxin = h5py.File(cdatadir + 'ALL_CLUSTER_host_vx.hdf5', 'r')['%04d'%c]
-    clus_vyin = h5py.File(cdatadir + 'ALL_CLUSTER_host_vy.hdf5', 'r')['%04d'%c]
-    clus_vzin = h5py.File(cdatadir + 'ALL_CLUSTER_host_vz.hdf5', 'r')['%04d'%c]
-
-    clus_id = np.array(clus_idin)//mod
-    clus_xs, clus_ys = np.zeros(129), np.zeros(129)
-    clus_zs, clus_r2 = np.zeros(129), np.zeros(129)
-    clus_vx, clus_vy = np.zeros(129), np.zeros(129)
-    clus_vz = np.zeros(129)
-
-
-    clus_xs[clus_id] = np.array(clus_xsin)
-    clus_ys[clus_id] = np.array(clus_ysin)
-    clus_zs[clus_id] = np.array(clus_zsin)
-    clus_r2[clus_id] = np.array(clus_r2in)
-    clus_vx[clus_id] = np.array(clus_vxin)
-    clus_vy[clus_id] = np.array(clus_vyin)
-    clus_vz[clus_id] = np.array(clus_vzin)
+    clus_idin = np.array(clus_idin)//mod
+    clus_id = np.zeros(129)
+    clus_id[clus_idin] = np.array(clus_idin)
 
     halo_id = h5py.File(membids + 'CLUSTER_%04d_grp_memb_branches.hdf5'%c, 'r')
     halo_xs = h5py.File(loaddir + 'xs/CLUSTER_%04d_grp_memb_xs.hdf5' % c, 'r')
@@ -648,22 +637,40 @@ def find_grp_relative_positions(c, loaddir, membids, cdatadir, outdir):
     keys = np.array(list(halo_id.keys()))
 
 
-    hf_xs = h5py.File(outdir + 'xs/CLUSTER_%04d_xs_reltoCLUS.hdf5'%c, 'w')
-    hf_ys = h5py.File(outdir + 'ys/CLUSTER_%04d_ys_reltoCLUS.hdf5'%c, 'w')
-    hf_zs = h5py.File(outdir + 'zs/CLUSTER_%04d_zs_reltoCLUS.hdf5'%c, 'w')
-    hf_vx = h5py.File(outdir + 'vx/CLUSTER_%04d_vx_reltoCLUS.hdf5'%c, 'w')
-    hf_vy = h5py.File(outdir + 'vy/CLUSTER_%04d_vy_reltoCLUS.hdf5'%c, 'w')
-    hf_vz = h5py.File(outdir + 'vz/CLUSTER_%04d_vz_reltoCLUS.hdf5'%c, 'w')
-    hf_ms = h5py.File(outdir + 'ms/CLUSTER_%04d_ms_reltoCLUS.hdf5'%c, 'w')
+    hf_id = h5py.File(outdir + 'id/CLUSTER_%04d_id_reltoGRP.hdf5'%c, 'w')
+    hf_xs = h5py.File(outdir + 'xs/CLUSTER_%04d_xs_reltoGRP.hdf5'%c, 'w')
+    hf_ys = h5py.File(outdir + 'ys/CLUSTER_%04d_ys_reltoGRP.hdf5'%c, 'w')
+    hf_zs = h5py.File(outdir + 'zs/CLUSTER_%04d_zs_reltoGRP.hdf5'%c, 'w')
+    hf_vx = h5py.File(outdir + 'vx/CLUSTER_%04d_vx_reltoGRP.hdf5'%c, 'w')
+    hf_vy = h5py.File(outdir + 'vy/CLUSTER_%04d_vy_reltoGRP.hdf5'%c, 'w')
+    hf_vz = h5py.File(outdir + 'vz/CLUSTER_%04d_vz_reltoGRP.hdf5'%c, 'w')
+    hf_ms = h5py.File(outdir + 'ms/CLUSTER_%04d_ms_reltoGRP.hdf5'%c, 'w')
     hf_mstar = h5py.File(outdir + 
-            'mstars/CLUSTER_%04d_mstars_reltoCLUS.hdf5'%c, 'w')
+            'mstars/CLUSTER_%04d_mstars_reltoGRP.hdf5'%c, 'w')
     hf_mgas = h5py.File(outdir + 
-            'mgas/CLUSTER_%04d_mgas_reltoCLUS.hdf5'%c, 'w')
-    hf_r2 = h5py.File(outdir + 'r200/CLUSTER_%04d_r200_reltoCLUS.hdf5'%c, 'w')
+            'mgas/CLUSTER_%04d_mgas_reltoGRP.hdf5'%c, 'w')
+    hf_r2 = h5py.File(outdir + 'r200/CLUSTER_%04d_r200_reltoGRP.hdf5'%c, 'w')
 
     for i in range(len(keys)):
         key = keys[i]
         keys2 = np.array(list(halo_id[key].keys()))
+
+        grp_idin = np.array(halo_id[key][keys2[0]])//mod
+        grp_xs, grp_ys = np.zeros(129), np.zeros(129)
+        grp_zs, grp_r2 = np.zeros(129), np.zeros(129)
+        grp_vx, grp_vy = np.zeros(129), np.zeros(129)
+        grp_vz = np.zeros(129)
+        grp_id = np.array(np.zeros(129), dtype='int')
+
+        grp_xs[grp_idin] = np.array(halo_xs[key][keys2[0]])
+        grp_ys[grp_idin] = np.array(halo_ys[key][keys2[0]])
+        grp_zs[grp_idin] = np.array(halo_zs[key][keys2[0]])
+        grp_vx[grp_idin] = np.array(halo_vx[key][keys2[0]])
+        grp_vy[grp_idin] = np.array(halo_vy[key][keys2[0]])
+        grp_vz[grp_idin] = np.array(halo_vz[key][keys2[0]])
+        grp_r2[grp_idin] = np.array(halo_r2[key][keys2[0]])
+        grp_id[grp_idin] = np.array(halo_id[key][keys2[0]])
+
         for j in range(len(keys2)):
             key_tot = key + '/' + keys2[j] #key and 'subkey' for halo
             ids = np.array(halo_id[key_tot])
@@ -672,8 +679,11 @@ def find_grp_relative_positions(c, loaddir, membids, cdatadir, outdir):
             hal_xs, hal_ys = np.zeros(129), np.zeros(129)
             hal_zs, hal_vx = np.zeros(129), np.zeros(129)
             hal_vy, hal_vz = np.zeros(129), np.zeros(129)
-            hal_ms, hal_r2 = np.zeros(129), np.zeros(129)
-            hal_mstar, hal_mgas = np.zeros(129), np.zeros(129)
+            hal_r2 = np.zeros(129)
+            hal_ms = np.array(np.zeros(129), dtype='int')
+            hal_mstar = np.array(np.zeros(129), dtype='int')
+            hal_mgas = np.array(np.zeros(129), dtype='int')
+            hal_ids = np.array(np.zeros(129), dtype='int')
             
             hal_xs[snap_ids] = np.array(halo_xs[key_tot])
             hal_ys[snap_ids] = np.array(halo_ys[key_tot])
@@ -685,23 +695,27 @@ def find_grp_relative_positions(c, loaddir, membids, cdatadir, outdir):
             hal_mstar[snap_ids] = np.array(halo_mstar[key_tot])
             hal_mgas[snap_ids] = np.array(halo_mgas[key_tot])
             hal_r2[snap_ids] = np.array(halo_r2[key_tot])
+            hal_ids[snap_ids] = ids
+            if (grp_id[grp_id>0][-1]//mod < hal_ids[hal_ids>0][-1]//mod)==True:
+                key_tot = key_tot[:-1]+'3'
+                #label haloes where group is lost before halo as '3'
             
-            boo = np.where((hal_xs > 0.) * (clus_xs > 0.))[0]
+            boo = np.where((hal_xs > 0.) * (grp_id > 0))[0]
             hal_xs, hal_ys, hal_zs = hal_xs[boo], hal_ys[boo], hal_zs[boo]
             hal_vx, hal_vy, hal_vz = hal_vx[boo], hal_vy[boo], hal_vz[boo]
             hal_ms, hal_mstar, hal_r2 = hal_ms[boo],hal_mstar[boo],hal_r2[boo]
-            hal_mgas = hal_mgas[boo]
-            clu_xs, clu_ys = clus_xs[boo], clus_ys[boo]
-            clu_zs, clu_r2 = clus_zs[boo], clus_r2[boo]
-            clu_vx, clu_vy = clus_vx[boo], clus_vy[boo]
-            clu_vz = clus_vz[boo]
+            hal_mgas, ids = hal_mgas[boo], hal_ids[boo]
+            gr_xs, gr_ys = grp_xs[boo], grp_ys[boo]
+            gr_zs, gr_r2 = grp_zs[boo], grp_r2[boo]
+            gr_vx, gr_vy = grp_vx[boo], grp_vy[boo]
+            gr_vz = grp_vz[boo]
 
-            rel_xs = (hal_xs-clu_xs) / clu_r2
-            rel_ys = (hal_ys-clu_ys) / clu_r2
-            rel_zs = (hal_zs-clu_zs) / clu_r2
-            rel_vx = (hal_vx-clu_vx)
-            rel_vy = (hal_vy-clu_vy)
-            rel_vz = (hal_vz-clu_vz)
+            rel_xs = (hal_xs-gr_xs) / gr_r2
+            rel_ys = (hal_ys-gr_ys) / gr_r2
+            rel_zs = (hal_zs-gr_zs) / gr_r2
+            rel_vx = (hal_vx-gr_vx)
+            rel_vy = (hal_vy-gr_vy)
+            rel_vz = (hal_vz-gr_vz)
 
             hf_xs.create_dataset(key_tot, data=rel_xs)
             hf_ys.create_dataset(key_tot, data=rel_ys)
@@ -713,6 +727,7 @@ def find_grp_relative_positions(c, loaddir, membids, cdatadir, outdir):
             hf_mstar.create_dataset(key_tot, data=hal_mstar)
             hf_mgas.create_dataset(key_tot, data=hal_mgas)
             hf_r2.create_dataset(key_tot, data=hal_r2)
+            hf_id.create_dataset(key_tot, data=ids)
 
 
     hf_xs.close()
@@ -725,10 +740,11 @@ def find_grp_relative_positions(c, loaddir, membids, cdatadir, outdir):
     hf_mstar.close()
     hf_mgas.close()
     hf_r2.close()
+    hf_id.close()
 
 
     return None
-'''
+
 
 
 
@@ -770,6 +786,11 @@ def bound(vrels, rrel, m, r200, incgroup=False):
     if incgroup==False:
         vir[host]=False
     return vir, rrels/r200, vrels/v_cr
+
+def v_crit(m200, r200):
+    ge = ((1.3271244*10.**20.) * m200) / (3.0857*10.**19.)
+    v_cr = 0.001*(1.2*ge/r200)**0.5
+    return v_cr
 
 
 def conv_hdf5_to_list(hdf_file):
@@ -847,7 +868,65 @@ if run_all_memb_data_rel_clus==True:
                 all_grp_member_branches, cluster_halo_data, 
                 all_relative_clus_data)
 
+if run_all_memb_data_rel_grp==True:
+    print('run_all_memb_data_rel_grp')
+    for clus_no in crange:
+        print(clus_no)
+        t0 = time.time()
+        find_grp_relative_positions(clus_no, all_grp_member_data, 
+                all_grp_member_branches, cluster_halo_data, 
+                all_relative_grp_data)
 
 
 
 
+c_no = 2000
+xs = h5py.File(all_grp_member_data + 'rel_to_grp/xs/CLUSTER_%04d_xs_reltoGRP.hdf5' % c_no, 'r')
+ys = h5py.File(all_grp_member_data + 'rel_to_grp/ys/CLUSTER_%04d_ys_reltoGRP.hdf5' % c_no, 'r')
+zs = h5py.File(all_grp_member_data + 'rel_to_grp/zs/CLUSTER_%04d_zs_reltoGRP.hdf5' % c_no, 'r')
+vx = h5py.File(all_grp_member_data + 'rel_to_grp/vx/CLUSTER_%04d_vx_reltoGRP.hdf5' % c_no, 'r')
+vy = h5py.File(all_grp_member_data + 'rel_to_grp/vy/CLUSTER_%04d_vy_reltoGRP.hdf5' % c_no, 'r')
+vz = h5py.File(all_grp_member_data + 'rel_to_grp/vz/CLUSTER_%04d_vz_reltoGRP.hdf5' % c_no, 'r')
+ms = h5py.File(all_grp_member_data + 'rel_to_grp/ms/CLUSTER_%04d_ms_reltoGRP.hdf5' % c_no, 'r')
+r2 = h5py.File(all_grp_member_data + 'rel_to_grp/r200/CLUSTER_%04d_r200_reltoGRP.hdf5' % c_no, 'r')
+
+
+keys = np.array(list(xs.keys()))
+rs = np.zeros(0)
+vs = np.zeros(0)
+for i in range(len(keys)):
+    keysi = np.array(list(xs[keys[i]].keys()))
+    xsi = xs[keys[i]]
+    ysi = ys[keys[i]]
+    zsi = zs[keys[i]]
+    vxi = vx[keys[i]]
+    vyi = vy[keys[i]]
+    vzi = vz[keys[i]]
+    msi = ms[keys[i]]
+    r2i = r2[keys[i]]
+    if len(keysi) > 0:
+        for j in range(1, len(keysi)):
+            r = (np.array(xsi[keysi[j]])[0]**2. + 
+            np.array(ysi[keysi[j]])[0]**2. + 
+            np.array(zsi[keysi[j]])[0]**2.)**0.5
+            rs = np.append(rs, r)
+
+            v = (np.array(vxi[keysi[j]])[0]**2. + 
+            np.array(vyi[keysi[j]])[0]**2. + 
+            np.array(vzi[keysi[j]])[0]**2.)**0.5
+            critical = v_crit(np.array(msi[keysi[j]])[0], 
+                    np.array(r2i[keysi[j]])[0])
+            #print(v)
+            #print(critical)
+            #print('')
+            vs = np.append(vs, v/critical)
+
+
+
+
+
+plt.figure()
+plt.scatter(rs, vs)
+#plt.xlim(0., 3.)
+#plt.ylim(0., 3.)
+plt.show()
