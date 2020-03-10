@@ -35,7 +35,7 @@ host_ids = np.array(pd.read_csv(G3X_data+'G3X_300_host_ids.txt', sep='\s+'),
 #plt.rcParams['xtick.color'] = COLOR
 #plt.rcParams['ytick.color'] = COLOR
 #plt.rc('font', family='sans-serif', size=18)
-plt.rc('font', family='serif', size=18)
+plt.rc('font', size=18)#family='serif', size=18)
 #plt.rc('text', usetex=True)
 plt.rc('legend', fontsize=18, frameon=False, loc='upper right')
 plt.rc('axes', labelsize=20)

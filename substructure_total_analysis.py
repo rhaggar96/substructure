@@ -10,27 +10,32 @@ run_find_cluster_data = False
 run_all_memb_data_rel_clus = False
 run_all_memb_data_rel_grp = False
 
+"""
+crange = [2]#range(1, 325)
 
-#base_folder = ('/run/media/ppxrh2/166AA4B87A2DD3B7/MergerTreeAHF/'
-#        + 'Infalling_Groups/MergerTreeAHF_Infalling_Re-written/')
-#all_relative_clus_data = ('/run/media/ppxrh2/166AA4B87A2DD3B7/MergerTreeAHF/'
-#        + 'Infalling_Groups/MergerTreeAHF_Infalling_Re-written/'
-#        + 'all_members_halo_data/rel_to_cluster/')
-#halo_data = ('/run/media/ppxrh2/166AA4B87A2DD3B7/NewMDCLUSTER_data/reduced_'
-#        + 'cluster_info/')
-#cluster_halo_data = ('/run/media/ppxrh2/166AA4B87A2DD3B7/MergerTreeAHF/Infall'
-#        + 'ing_Groups/MergerTreeAHF_Infalling_Re-written/cluster_halo_data/')
-#backsplash_track_data = ('/run/media/ppxrh2/166AA4B87A2DD3B7/MergerTreeAHF/'
-#        + 'MergerTreeAHF_General_Tree_Comp/')
-#main_prog_data = ('/run/media/ppxrh2/166AA4B87A2DD3B7/MergerTreeAHF/'
-#        + 'MergerTreeAHF_HDF5_MainProg/')
-#ascii_prog_data = ('/run/media/ppxrh2/166AA4B87A2DD3B7/MergerTreeAHF/'
-#        + 'MergerTreeAHF_ASCII/')
+base_folder = ('/run/media/ppxrh2/166AA4B87A2DD3B7/MergerTreeAHF/'
+        + 'Infalling_Groups/MergerTreeAHF_Infalling_Re-written/')
+halo_data = ('/run/media/ppxrh2/166AA4B87A2DD3B7/NewMDCLUSTER_data/reduced_'
+        + 'cluster_info/')
+cluster_halo_data = ('/run/media/ppxrh2/166AA4B87A2DD3B7/MergerTreeAHF/Infall'
+        + 'ing_Groups/MergerTreeAHF_Infalling_Re-written/cluster_halo_data/')
+backsplash_track_data = ('/run/media/ppxrh2/166AA4B87A2DD3B7/MergerTreeAHF/'
+        + 'MergerTreeAHF_General_Tree_Comp/')
+main_prog_data = ('/run/media/ppxrh2/166AA4B87A2DD3B7/MergerTreeAHF/'
+        + 'MergerTreeAHF_HDF5_MainProg/')
+ascii_prog_data = ('/run/media/ppxrh2/166AA4B87A2DD3B7/MergerTreeAHF/'
+        + 'MergerTreeAHF_ASCII/')
 
-
+"""
 
 base_folder = ('/run/media/ppxrh2/166AA4B87A2DD3B7/MergerTreeAHF/Infalling_Gr'
         + 'oups/MergerTreeAHF_Infalling_Re-written/NewMDCLUSTER_0002_reruns/')
+halo_data = (base_folder + 'reduced_cluster_info/')
+cluster_halo_data = (base_folder + 'cluster_halo_data/')
+backsplash_track_data = (base_folder + 'full_tracking/')
+main_prog_data = (base_folder + 'main_progs/')
+ascii_prog_data = base_folder
+#"""
 
 all_infalling_objects = base_folder + 'all_infalling_objects/'
 all_infalling_branches = base_folder + 'all_infaller_branches/'
@@ -39,12 +44,6 @@ all_grp_member_branches = base_folder + 'all_group_member_branches/'
 all_grp_member_data = base_folder + 'all_members_halo_data/'
 all_relative_clus_data = base_folder + 'all_members_halo_data/'
 all_relative_grp_data = base_folder + 'all_members_halo_data/'
-
-halo_data = (base_folder + 'reduced_cluster_info/')
-cluster_halo_data = (base_folder + 'cluster_halo_data/')
-backsplash_track_data = (base_folder + 'full_tracking/')
-main_prog_data = (base_folder + 'main_progs/')
-ascii_prog_data = base_folder
 
 
 
@@ -773,7 +772,6 @@ def find_branch(id_a, id_list, keep_sing=False):
     
     return result, final_state
 
-
 def bound(vrels, rrel, m, r200, incgroup=False):
     """ Determine whether a list of haloes are bound to their host """
     rrels = rrel
@@ -803,19 +801,18 @@ def conv_hdf5_to_list(hdf_file):
 
 def make_files_in_dir(outdir, dirlist):
     """ Make paths for output data if not exist """
-    if not os.path.exists(outdir + dirlist[0]):
-        for i in range(len(dirlist)):
+    for i in range(len(dirlist)):
+        if not os.path.exists(outdir + dirlist[i]):
             os.mkdir(outdir + dirlist[i])
     return None
 
 
 
-crange = [2000, 2001]#range(1, 325)
 
-###FOR CLUSTER 2:
-c_ids_new = np.array(np.zeros(2002), dtype='int')
-c_ids_new[crange] = c_ids[1]
-c_ids = c_ids_new
+###FOR CLUSTER 2 re-runs:
+#c_ids_new = np.array(np.zeros(2002), dtype='int')
+#c_ids_new[crange] = c_ids[1]
+#c_ids = c_ids_new
 
 
 
@@ -881,6 +878,11 @@ if run_all_memb_data_rel_grp==True:
 
 
 c_no = 2000
+rs = np.zeros(0)
+vs = np.zeros(0)
+
+id = h5py.File(all_grp_member_data + 'rel_to_grp/id/CLUSTER_%04d_id_reltoGRP.hdf5' % c_no, 'r')
+id = h5py.File(all_grp_member_branches + 'CLUSTER_%04d_grp_memb_branches.hdf5' % c_no, 'r')
 xs = h5py.File(all_grp_member_data + 'rel_to_grp/xs/CLUSTER_%04d_xs_reltoGRP.hdf5' % c_no, 'r')
 ys = h5py.File(all_grp_member_data + 'rel_to_grp/ys/CLUSTER_%04d_ys_reltoGRP.hdf5' % c_no, 'r')
 zs = h5py.File(all_grp_member_data + 'rel_to_grp/zs/CLUSTER_%04d_zs_reltoGRP.hdf5' % c_no, 'r')
@@ -888,12 +890,18 @@ vx = h5py.File(all_grp_member_data + 'rel_to_grp/vx/CLUSTER_%04d_vx_reltoGRP.hdf
 vy = h5py.File(all_grp_member_data + 'rel_to_grp/vy/CLUSTER_%04d_vy_reltoGRP.hdf5' % c_no, 'r')
 vz = h5py.File(all_grp_member_data + 'rel_to_grp/vz/CLUSTER_%04d_vz_reltoGRP.hdf5' % c_no, 'r')
 ms = h5py.File(all_grp_member_data + 'rel_to_grp/ms/CLUSTER_%04d_ms_reltoGRP.hdf5' % c_no, 'r')
+mstars = h5py.File(all_grp_member_data + 'rel_to_grp/mstars/CLUSTER_%04d_mstars_reltoGRP.hdf5' % c_no, 'r')
 r2 = h5py.File(all_grp_member_data + 'rel_to_grp/r200/CLUSTER_%04d_r200_reltoGRP.hdf5' % c_no, 'r')
+
+keys = np.array(list(id.keys()))
+keys1 = keys[-1]
+print(keys1)
+keys2 = np.array(list(id[keys[-1]].keys()))[-1]
+print(np.array(id[keys1][keys2]))
+
 
 
 keys = np.array(list(xs.keys()))
-rs = np.zeros(0)
-vs = np.zeros(0)
 for i in range(len(keys)):
     keysi = np.array(list(xs[keys[i]].keys()))
     xsi = xs[keys[i]]
@@ -903,30 +911,56 @@ for i in range(len(keys)):
     vyi = vy[keys[i]]
     vzi = vz[keys[i]]
     msi = ms[keys[i]]
+    mti = mstars[keys[i]]
     r2i = r2[keys[i]]
-    if len(keysi) > 0:
+    ms_grp = np.array(msi[keysi[0]])[0]
+    #mt_grp = np.array(mti[keysi[0]])[0]
+    #gal_sel = (ms_grp > 10.**10.5) * (mt_grp > 10.**9.5) * (
+    #        (mt_grp/ms_grp)<0.3)
+    gal_sel = (ms_grp > 10.**10.5)
+    if gal_sel == True:
+        #print(keys[i])
         for j in range(1, len(keysi)):
-            r = (np.array(xsi[keysi[j]])[0]**2. + 
-            np.array(ysi[keysi[j]])[0]**2. + 
-            np.array(zsi[keysi[j]])[0]**2.)**0.5
-            rs = np.append(rs, r)
+            ms_arr = np.array(msi[keysi[j]])[0]
+            #mt_arr = np.array(mti[keysi[j]])[0]
+            #gal_sel = (ms_arr > 10.**10.5) * (mt_arr > 10.**9.5) * (
+            #        (mt_arr/ms_arr)<0.3) * (ms_grp > ms_arr)
+            gal_sel = (ms_arr > 10.**10.5) * (ms_grp > ms_arr)
 
-            v = (np.array(vxi[keysi[j]])[0]**2. + 
-            np.array(vyi[keysi[j]])[0]**2. + 
-            np.array(vzi[keysi[j]])[0]**2.)**0.5
-            critical = v_crit(np.array(msi[keysi[j]])[0], 
-                    np.array(r2i[keysi[j]])[0])
-            #print(v)
-            #print(critical)
-            #print('')
-            vs = np.append(vs, v/critical)
+            if gal_sel == True:
+                r = (np.array(xsi[keysi[j]])[0]**2. + 
+                np.array(ysi[keysi[j]])[0]**2. + 
+                np.array(zsi[keysi[j]])[0]**2.)**0.5
+
+                v = (np.array(vxi[keysi[j]])[0]**2. + 
+                np.array(vyi[keysi[j]])[0]**2. + 
+                np.array(vzi[keysi[j]])[0]**2.)**0.5
+                critical = v_crit(np.array(msi[keysi[0]])[0], 
+                        np.array(r2i[keysi[0]])[0])
+                rs = np.append(rs, r)
+                vs = np.append(vs, v/critical)
 
 
 
+def bound_crit(x):
+    return ((5./(3.*x)) - (2./3.))**0.5
 
 
-plt.figure()
-plt.scatter(rs, vs)
+
+plt.figure(figsize=(7, 5.5))
+plt.plot(np.arange(1,251)/100., bound_crit(np.arange(1,251)/100.), linewidth=2., c='r')
+plt.scatter(rs, vs, s=30.)
+#plt.title('Original softening length', size=18)
+plt.title('DM-only', size=18)
+#plt.title('Reduced softening length', size=18)
+plt.xlim(0., 3.)
+plt.ylim(0., 2.5)
+plt.xlabel(r'$r/R_{200,\rm{host}}$')
+plt.ylabel(r'$v/v_{\rm{crit}}$')
+plt.tight_layout()
 #plt.xlim(0., 3.)
 #plt.ylim(0., 3.)
+#plt.savefig('cluster_0002.png', dpi=200)
+plt.savefig('cluster_0002_dm.png', dpi=200)
+#plt.savefig('cluster_0002_red-soft.png', dpi=200)
 plt.show()
